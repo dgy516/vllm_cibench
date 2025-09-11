@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [ main ]
     types: [opened, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
 
 jobs:
   enable-auto-merge:
@@ -22,5 +23,5 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           pull-request-number: ${{ github.event.pull_request.number }}
-          merge-method: squash
-
+          merge-method: rebase
+          merge-method: rebase

@@ -15,3 +15,5 @@ mypy~=1.11
 types-PyYAML~=6.0
 typing-extensions>=4.7
 
+# CLI testing helpers
+typer~=0.12
