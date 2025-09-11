@@ -1,9 +1,19 @@
-"""本地部署骨架测试。"""
+# isort: skip_file
+"""本地部署相关测试。"""
 
+from __future__ import annotations
+
+import subprocess
 from pathlib import Path
 
+import pytest
+
 from vllm_cibench.config import list_scenarios
-from vllm_cibench.deploy.local import build_start_command, scenario_base_url
+from vllm_cibench.deploy.local import (
+    build_start_command,
+    scenario_base_url,
+    start_local,
+)
 
 
 def test_build_start_command_and_base_url():
@@ -19,3 +29,57 @@ def test_build_start_command_and_base_url():
 
     url = scenario_base_url(scenario)
     assert url.startswith("http://") or url.startswith("https://")
+
+
+class DummyProc:
+    def __init__(self, cmd, stdout=None, stderr=None):
+        self.cmd = cmd
+        self.stdout = stdout
+        self.stderr = stderr
+        self.terminated = False
+
+    def terminate(self) -> None:  # pragma: no cover - 简单 setter
+        self.terminated = True
+
+
+def test_start_local_success(monkeypatch: pytest.MonkeyPatch):
+    """探活通过时应返回子进程对象。"""
+
+    def fake_popen(cmd, stdout=None, stderr=None):
+        return DummyProc(cmd, stdout, stderr)
+
+    def fake_wait(url: str, timeout_s: float, max_attempts: int) -> bool:
+        return True
+
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    monkeypatch.setattr("vllm_cibench.deploy.local.wait_for_http", fake_wait)
+
+    proc = start_local(script=Path("scripts/start_local.sh"), health_url="http://x")
+    assert isinstance(proc, DummyProc)
+    assert proc.cmd[0] == "bash"
+
+
+def test_start_local_health_fail(monkeypatch: pytest.MonkeyPatch):
+    """探活失败时应终止子进程并抛出异常。"""
+
+    terminated: dict[str, bool] = {"flag": False}
+
+    def fake_popen(cmd, stdout=None, stderr=None):
+        class P:
+            def __init__(self):
+                self.cmd = cmd
+
+            def terminate(self):
+                terminated["flag"] = True
+
+        return P()
+
+    def fake_wait(url: str, timeout_s: float, max_attempts: int) -> bool:
+        return False
+
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    monkeypatch.setattr("vllm_cibench.deploy.local.wait_for_http", fake_wait)
+
+    with pytest.raises(RuntimeError):
+        start_local(script=Path("scripts/start_local.sh"), health_url="http://x")
+    assert terminated["flag"] is True

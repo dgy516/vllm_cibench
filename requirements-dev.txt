@@ -13,6 +13,7 @@ isort~=5.13
 # Type checking
 mypy~=1.11
 types-PyYAML~=6.0
+types-requests~=2.32
 typing-extensions>=4.7
 
 # CLI testing helpers
