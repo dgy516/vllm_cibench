@@ -24,12 +24,7 @@ except ModuleNotFoundError:
 if yaml is None:  # pragma: no cover - 缺少依赖时跳过整个模块
     pytest.skip("PyYAML not installed", allow_module_level=True)
 
-from vllm_cibench.config import (
-    ScenarioRegistry,
-    list_scenarios,
-    load_matrix,
-    resolve_plan,
-)
+from vllm_cibench import config as cfg
 from vllm_cibench.run import app
 
 pytestmark = pytest.mark.skipif(CliRunner is None, reason="typer not installed")
@@ -38,7 +33,7 @@ pytestmark = pytest.mark.skipif(CliRunner is None, reason="typer not installed")
 def test_list_scenarios_ids(tmp_path: Path):
     """校验场景目录能正确解析出示例场景 id。"""
 
-    scenarios = list_scenarios(Path("configs/scenarios"))
+    scenarios = cfg.list_scenarios(Path("configs/scenarios"))
     ids = {s.id for s in scenarios}
     # 仓库当前包含 3 个示例场景
     assert {
@@ -59,8 +54,8 @@ def test_list_scenarios_ids(tmp_path: Path):
 def test_resolve_plan_from_matrix(scenario_id: str):
     """校验从 matrix.yaml 解析到 PR 类型的计划字段。"""
 
-    matrix = load_matrix(Path("configs/matrix.yaml"))
-    plan = resolve_plan(matrix, scenario_id, "pr")
+    matrix = cfg.load_matrix(Path("configs/matrix.yaml"))
+    plan = cfg.resolve_plan(matrix, scenario_id, "pr")
     assert set(plan.keys()) == {"functional", "perf", "accuracy"}
 
 
@@ -90,7 +85,7 @@ def test_cli_plan_json_output():
 def test_scenario_registry_get():
     """校验 ScenarioRegistry 能获取场景并对未知 id 抛错。"""
 
-    registry = ScenarioRegistry.from_dir(Path("configs/scenarios"))
+    registry = cfg.ScenarioRegistry.from_dir(Path("configs/scenarios"))
     scenario = registry.get("local_single_qwen3-32b_guided_w8a8")
     assert scenario.mode == "local"
     with pytest.raises(KeyError):
