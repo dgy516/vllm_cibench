@@ -13,13 +13,15 @@
 - 本仓库提供 `.pre-commit-config.yaml`，包含：基础钩子（空白/换行/冲突检测/大文件/私钥/YAML 语法）、Black、Ruff、Yamllint、MarkdownLint。
 - CI 会自动执行 pre-commit 钩子，确保本地与 CI 一致；如需修复按照提示本地运行 `pre-commit run -a`。
 
-### 保护分支与合并策略
-- `main` 为保护分支（要求 PR 审核与 CI 通过后合入），禁止直接 push。
-- 需在 GitHub 仓库 Settings → Branches 配置 Branch protection rule：
-  - Require a pull request before merging（需要代码审核）
-  - Require status checks to pass before merging（启用本仓库 CI）
-  - Restrict who can push to matching branches（可选）
-  - 可选择允许 squash/merge/rebase 任意一种合并策略
+### 保护分支与合并策略（严格禁止直推 main）
+- main 为保护分支：禁止直接 push，必须新建分支→创建 PR→CI 全绿→合并。
+- 请在仓库 Settings → Branches 新建规则（分支名 `main`）：
+  - Require a pull request before merging（至少 1 名 Reviewer）
+  - Require status checks to pass before merging（选择本仓库 CI 任务）
+  - Require branches to be up to date before merging（建议开启）
+  - Include administrators（建议开启，管理员也需走 PR）
+  - Do not allow bypass: 关闭 Allow force pushes / Allow deletions
+  - Restrict who can push to matching branches（可选：不配置任何直推主体）
 
 ## 目录结构（建议）
 - `src/vllm_cibench/`：launcher、runners（functional/perf/accuracy）、metrics、config loader
@@ -65,7 +67,7 @@
 - 必需门（PR）：Lint/Type/Unit/Functional 必须通过；Accuracy 低于阈值失败；Performance 与最近一次 daily 基线对比：TTFT/E2E P99 回归>10% 失败、QPS 下降>5% 失败、Fail Rate >5% 失败
 - 计划任务：Asia/Shanghai；UTC 00:00 运行；产物保留期：PR 14 天、每日 30 天
 
-提示：本仓库提供了一个 `Protect main` 的 GitHub Actions 守卫（禁止直接 push 到 main，要求通过 PR 合并）。请同时启用仓库层面的保护分支设置以强约束执行。
+提示：请依赖 GitHub 的 Branch protection 规则实现从源头阻断直推。本仓库不再提供额外的守卫 Action（Action 无法在 push 前阻断）。
 
 ## 注意事项
 - K8s 访问使用 NodePort（`service_name(+port_name=http)` 优先解析；否则使用配置中的 `node_port`）
