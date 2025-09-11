@@ -1,9 +1,7 @@
 name: auto-merge
 
 on:
-  pull_request:
-    branches: [ main ]
-    types: [opened, reopened, synchronize, ready_for_review]
+  # 手动触发时才启用自动合并（默认关闭）
   workflow_dispatch:
 
 jobs:
