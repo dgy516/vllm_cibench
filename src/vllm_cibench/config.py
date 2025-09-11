@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 
 @dataclass
@@ -97,6 +97,47 @@ def list_scenarios(dir_path: Path) -> List[Scenario]:
             )
         )
     return scenarios
+
+
+@dataclass
+class ScenarioRegistry:
+    """场景注册表，按 id 存取场景。"""
+
+    mapping: Dict[str, Scenario]
+
+    @classmethod
+    def from_dir(cls, dir_path: Path) -> "ScenarioRegistry":
+        """从目录构建注册表。
+
+        参数:
+            dir_path: `configs/scenarios/` 目录路径。
+
+        返回值:
+            ScenarioRegistry: 包含所有场景的注册表。
+
+        副作用:
+            读取文件系统。
+        """
+
+        scenarios = list_scenarios(dir_path)
+        return cls({s.id: s for s in scenarios})
+
+    def get(self, scenario_id: str) -> Scenario:
+        """按 id 获取场景，若不存在则抛出 KeyError。
+
+        参数:
+            scenario_id: 场景 id。
+
+        返回值:
+            Scenario: 匹配的场景对象。
+
+        副作用:
+            无。
+        """
+
+        if scenario_id not in self.mapping:
+            raise KeyError(f"scenario not found: {scenario_id}")
+        return self.mapping[scenario_id]
 
 
 def resolve_plan(

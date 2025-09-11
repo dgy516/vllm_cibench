@@ -17,7 +17,7 @@ from typing import Optional
 
 import typer
 
-from .config import list_scenarios, load_matrix, resolve_plan
+from .config import ScenarioRegistry, load_matrix, resolve_plan
 
 app = typer.Typer(help="vLLM CI Bench / 计划与编排 CLI")
 
@@ -49,11 +49,13 @@ def plan(
     scenarios_dir = base / "configs" / "scenarios"
 
     matrix = load_matrix(matrix_path)
-    scenarios = list_scenarios(scenarios_dir)
-
-    known_ids = {s.id for s in scenarios}
-    if scenario not in known_ids:
-        raise typer.BadParameter(f"未知场景: {scenario}. 可选: {sorted(known_ids)}")
+    registry = ScenarioRegistry.from_dir(scenarios_dir)
+    try:
+        registry.get(scenario)
+    except KeyError:
+        raise typer.BadParameter(
+            f"未知场景: {scenario}. 可选: {sorted(registry.mapping.keys())}"
+        )
 
     plan_obj = resolve_plan(matrix, scenario, run_type)
     typer.echo(
