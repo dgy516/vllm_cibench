@@ -3,31 +3,41 @@ name: auto-merge
 on:
   # 手动触发时才启用自动合并（默认关闭）
   workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull request number"
+        required: true
+        type: number
+      merge_method:
+        description: "Merge method"
+        required: false
+        default: rebase
+        type: choice
+        options:
+          - rebase
+          - squash
+          - merge
 
 jobs:
   enable-auto-merge:
     name: enable-auto-merge
-    # Only for PRs from this repository (not forks) and not drafts
-    if: >-
-      github.event.pull_request.draft == false &&
-      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - name: Enable auto-merge (rebase)
+      - name: Enable auto-merge (primary)
         id: enable_rebase
         uses: peter-evans/enable-pull-request-automerge@v3
         continue-on-error: true
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          pull-request-number: ${{ github.event.pull_request.number }}
-          merge-method: rebase
+          pull-request-number: ${{ inputs.pr_number }}
+          merge-method: ${{ inputs.merge_method }}
       - name: Enable auto-merge (squash fallback)
-        if: steps.enable_rebase.outcome == 'failure'
+        if: ${{ steps.enable_rebase.outcome == 'failure' && inputs.merge_method == 'rebase' }}
         uses: peter-evans/enable-pull-request-automerge@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          pull-request-number: ${{ github.event.pull_request.number }}
+          pull-request-number: ${{ inputs.pr_number }}
           merge-method: squash
