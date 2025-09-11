@@ -4,7 +4,10 @@ on:
   pull_request:
     branches: [ main ]
     types: [opened, reopened, synchronize, ready_for_review]
+<<<<<<< HEAD
   workflow_dispatch:
+=======
+>>>>>>> origin/main
 
 jobs:
   enable-auto-merge:
@@ -23,4 +26,9 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           pull-request-number: ${{ github.event.pull_request.number }}
+<<<<<<< HEAD
           merge-method: rebase
+=======
+          merge-method: squash
+
+>>>>>>> origin/main

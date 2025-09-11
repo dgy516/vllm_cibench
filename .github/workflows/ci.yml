@@ -4,7 +4,10 @@ on:
     branches: [ main ]
   push:
     branches: [ main ]
+<<<<<<< HEAD
   workflow_dispatch:
+=======
+>>>>>>> origin/main
 
 jobs:
   lint:
