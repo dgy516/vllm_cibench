@@ -18,6 +18,7 @@ from typing import Optional
 import typer
 
 from .config import ScenarioRegistry, load_matrix, resolve_plan
+from .orchestrators import run_matrix as run_matrix_mod
 from .orchestrators import run_pipeline
 
 app = typer.Typer(help="vLLM CI Bench / 计划与编排 CLI")
@@ -134,3 +135,16 @@ def run(
 
 if __name__ == "__main__":
     main()
+
+
+@app.command("run-matrix")
+def run_matrix(
+    run_type: str = typer.Option("pr", "--run-type", help="运行类型: pr/daily"),
+    root: Optional[str] = typer.Option(
+        None, "--root", help="项目根目录（默认当前工作目录）"
+    ),
+) -> None:
+    """批量执行 matrix.yaml 中的所有场景。"""
+
+    res = run_matrix_mod.execute_matrix(run_type=run_type, root=root)
+    typer.echo(json.dumps(res, ensure_ascii=False))
