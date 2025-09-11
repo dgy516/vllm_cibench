@@ -1,23 +1,10 @@
-## 概述
-- 变更目的：
-- 关联 Issue：
-- 变更类型：docs / config / ci / other
+### 目标
+- [ ] 本 PR 的范围清晰、粒度可评审
+- [ ] 本地 `pytest` 全绿；CI 全绿
 
-## 变更内容
-- 文档：是否更新 DESIGN/DEVELOPMENT/REQUIREMENTS/TODO？
-- 配置：是否修改/新增 configs/*（providers/scenarios/profiles/matrix）？
-- CI：是否修改 .github/workflows？
+### TDD 证明
+- [ ] 先提交了测试（使本地/CI 变红）
+- [ ] 再提交实现（使本地/CI 变绿）
 
-## 验证
-- YAML 通过 yamllint 校验
-- 关键路径存在性检查通过（CI 自动执行）
-- 本地自查（若适用）：
-  ```bash
-  yamllint -c .yamllint.yaml .
-  ```
-
-## 清单
-- [ ] 变更符合 AGENTS.md（Repository Guidelines）
-- [ ] 文档已更新或确认无需更新
-- [ ] 无敏感信息（密钥/地址）被提交
-
+### 风险/回滚
+- [ ] 若上线异常，执行 `git revert <merge-commit>` 回滚

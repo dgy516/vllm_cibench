@@ -17,4 +17,3 @@ startup_timeout_seconds: 1200
 env: {}
 args:
   tensor_parallel_size: 2
-

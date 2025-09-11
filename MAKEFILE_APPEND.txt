@@ -1,0 +1,11 @@
+
+check:
+	. .venv/bin/activate && ruff check src tests && \
+	black --check src tests && \
+	isort --check-only src tests && \
+	mypy --ignore-missing-imports src && \
+	pytest -q
+
+bootstrap:
+	python3.11 -m venv .venv
+	. .venv/bin/activate && pip install -r requirements.txt && pip install -r requirements-dev.txt

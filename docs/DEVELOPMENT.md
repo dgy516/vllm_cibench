@@ -5,13 +5,9 @@
 - 依赖工具：`pytest`、`black`、`ruff`、`mypy`（严格模式）；覆盖率 ≥85%
 - 安全：不提交任何密钥；如需 Pushgateway，使用环境变量 `PROM_PUSHGATEWAY_URL`
 
-### Pre-commit（强烈建议启用）
-- 安装并启用：
-  - `pip install pre-commit`
-  - `pre-commit install`
-  - 首次全量运行：`pre-commit run -a`
-- 本仓库提供 `.pre-commit-config.yaml`，包含：基础钩子（空白/换行/冲突检测/大文件/私钥/YAML 语法）、Black、Ruff、Yamllint、MarkdownLint。
-- CI 会自动执行 pre-commit 钩子，确保本地与 CI 一致；如需修复按照提示本地运行 `pre-commit run -a`。
+### 代码风格与校验
+- 推荐使用 `ruff`、`black` 在本地进行格式与静态检查（非强制）。
+- CI 已包含 YAML 语法/风格检查与仓库结构检查；必要时可扩展更多校验。
 
 ### 保护分支与合并策略（严格禁止直推 main）
 - main 为保护分支：禁止直接 push，必须新建分支→创建 PR→CI 全绿→合并。

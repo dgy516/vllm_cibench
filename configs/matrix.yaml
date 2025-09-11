@@ -1,5 +1,4 @@
 # 映射每个场景在 PR / Daily 运行哪些阶段与功能用例子集
-
 local_single_qwen3-32b_guided_w8a8:
   pr:
     functional: all
@@ -9,7 +8,6 @@ local_single_qwen3-32b_guided_w8a8:
     functional: all
     perf: true
     accuracy: true
-
 k8s_hybrid_qwen3-32b_tp2_w4a8:
   pr:
     functional: all
@@ -19,7 +17,6 @@ k8s_hybrid_qwen3-32b_tp2_w4a8:
     functional: all
     perf: true
     accuracy: true
-
 k8s_pd_deepseek-r1_2p1d_reasoning_w8a8:
   pr:
     functional: all
@@ -29,4 +26,3 @@ k8s_pd_deepseek-r1_2p1d_reasoning_w8a8:
     functional: all
     perf: true
     accuracy: true
-

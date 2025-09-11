@@ -13,4 +13,3 @@ concurrency: [1, 2, 4, 8, 16]
 input_length: [128, 512, 2048, 4096]
 output_length: [128, 1024, 4096]
 num_requests_per_concurrency: 32
-
