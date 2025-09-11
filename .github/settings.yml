@@ -8,6 +8,7 @@ branches:
         strict: true
         contexts:
           - "ci / gate"
+          - "codex-review / review"
       enforce_admins: true
       required_linear_history: true
       required_pull_request_reviews:

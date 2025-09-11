@@ -1,0 +1,47 @@
+name: codex-review
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, reopened, synchronize, ready_for_review]
+
+jobs:
+  review:
+    name: review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt || true
+          pip install -r requirements-dev.txt
+      - name: Lint & Typecheck & Test
+        run: |
+          ruff check src tests
+          black --check src tests
+          isort --check-only src tests
+          mypy --ignore-missing-imports src
+          pytest -q -m "not slow" || pytest -q
+      - name: Summarize changes
+        id: summary
+        run: |
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          git --no-pager diff --name-status origin/${{ github.base_ref }}...HEAD || true >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Post review comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `Codex Review Bot\n\n` +
+              `CI checks: ruff/black/isort/mypy/pytest all passed.\n` +
+              `Changed files (vs base):\n\n\`\n${{ steps.summary.outputs.files }}\n\``;
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body
+            });
+
