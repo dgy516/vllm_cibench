@@ -1,0 +1,14 @@
+id: local_single_qwen3-32b_guided_w8a8
+mode: local
+model: Qwen3-32B
+served_model_name: qwen3-32b
+quant: w8a8
+features:
+  guided_decoding: true
+  function_call: false
+  reasoning: false
+base_url: http://127.0.0.1:9000/v1
+startup_timeout_seconds: 1200
+env: {}
+args: {}
+

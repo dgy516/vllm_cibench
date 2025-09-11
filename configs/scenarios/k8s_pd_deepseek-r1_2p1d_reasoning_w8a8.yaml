@@ -1,0 +1,22 @@
+id: k8s_pd_deepseek-r1_2p1d_reasoning_w8a8
+mode: k8s-pd
+model: DeepSeek-R1
+served_model_name: deepseek-r1
+quant: w8a8
+features:
+  guided_decoding: false
+  function_call: false
+  reasoning: true
+k8s:
+  namespace: default
+  service_name: infer-vllm-pd
+  port_name: http
+  # node_port: 9000
+pd:
+  scheduler_params: "--max-num-seqs=256 --enable-reasoning --reasoning-parser=deepseek_r1"
+  prefill_params: "--max-num-seqs=24 --tokenizer-pool-size=8 --enforce-eager --enable-prefix-caching"
+  decode_params: "--max-num-seqs=24 --preemption-mode=swap --swap-space=16"
+startup_timeout_seconds: 1200
+env: {}
+args: {}
+

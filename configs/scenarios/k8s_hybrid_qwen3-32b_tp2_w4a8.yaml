@@ -1,0 +1,20 @@
+id: k8s_hybrid_qwen3-32b_tp2_w4a8
+mode: k8s-hybrid
+model: Qwen3-32B
+served_model_name: qwen3-32b
+quant: w4a8
+features:
+  guided_decoding: false
+  function_call: true
+  reasoning: false
+k8s:
+  namespace: default
+  service_name: infer-vllm
+  port_name: http
+  # 如无法通过端口名解析 NodePort，请显式提供：
+  # node_port: 9000
+startup_timeout_seconds: 1200
+env: {}
+args:
+  tensor_parallel_size: 2
+

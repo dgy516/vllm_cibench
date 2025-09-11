@@ -1,0 +1,16 @@
+profile: pr
+control_method: climb
+growth_rate: 2
+growth_interval_ms: 5000
+init_concurrency: 1
+backend: openai-chat
+temperature: 0.6
+top_k: 8
+top_p: 1.0
+warmup: 1
+epochs: 1
+concurrency: [1, 2, 4]
+input_length: [128, 2048]
+output_length: [128, 1024]
+num_requests_per_concurrency: 16
+
