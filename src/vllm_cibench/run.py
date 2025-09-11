@@ -111,6 +111,9 @@ def run(
         None, "--root", help="项目根目录（默认当前工作目录）"
     ),
     timeout: float = typer.Option(60.0, "--timeout", help="探活最大等待时长（秒）"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="跳过发现与探活，使用 mock 数据"
+    ),
 ) -> None:
     """执行集成编排：探活→功能→性能→（daily）指标推送。
 
@@ -128,7 +131,11 @@ def run(
     """
 
     res = run_pipeline.execute(
-        scenario_id=scenario, run_type=run_type, root=root, timeout_s=timeout
+        scenario_id=scenario,
+        run_type=run_type,
+        root=root,
+        timeout_s=timeout,
+        dry_run=dry_run,
     )
     typer.echo(json.dumps(res, ensure_ascii=False))
 
@@ -143,8 +150,31 @@ def run_matrix(
     root: Optional[str] = typer.Option(
         None, "--root", help="项目根目录（默认当前工作目录）"
     ),
+    concurrency: int = typer.Option(1, "--concurrency", help="并发执行的场景数"),
+    scenario_timeout: float = typer.Option(
+        60.0, "--scenario-timeout", help="单场景探活超时（秒）"
+    ),
+    tolerate_failures: bool = typer.Option(
+        True, "--tolerate-failures", help="失败是否容忍继续"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="跳过发现与探活，使用 mock 数据"
+    ),
+    output: Optional[str] = typer.Option(
+        None, "--output", help="将结果 JSON 写入到该文件"
+    ),
 ) -> None:
     """批量执行 matrix.yaml 中的所有场景。"""
 
-    res = run_matrix_mod.execute_matrix(run_type=run_type, root=root)
-    typer.echo(json.dumps(res, ensure_ascii=False))
+    res = run_matrix_mod.execute_matrix(
+        run_type=run_type,
+        root=root,
+        dry_run=dry_run,
+        concurrency=concurrency,
+        per_scenario_timeout_s=scenario_timeout,
+        tolerate_failures=tolerate_failures,
+    )
+    text = json.dumps(res, ensure_ascii=False)
+    if output:
+        Path(output).write_text(text, encoding="utf-8")
+    typer.echo(text)
