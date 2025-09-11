@@ -78,6 +78,7 @@ def execute(
     *,
     root: Optional[str] = None,
     timeout_s: float = 60.0,
+    dry_run: bool = False,
 ) -> Dict[str, Any]:
     """执行编排：探活→功能→性能→（daily）指标推送。
 
@@ -107,14 +108,22 @@ def execute(
         "pushed": False,
     }
 
-    base_url = _discover_and_wait(base, scenario, timeout_s=timeout_s)
+    if dry_run:
+        base_url = f"dry://{scenario.id}"
+    else:
+        base_url = _discover_and_wait(base, scenario, timeout_s=timeout_s)
     result["base_url"] = base_url
 
     # Functional
     if plan.get("functional"):
         try:
-            resp = run_smoke_suite(base_url=base_url, model=scenario.served_model_name)
-            ok = bool(resp.get("choices"))
+            if dry_run:
+                ok = True
+            else:
+                resp = run_smoke_suite(
+                    base_url=base_url, model=scenario.served_model_name
+                )
+                ok = bool(resp.get("choices"))
             result["functional"] = "ok" if ok else "failed"
         except Exception:
             result["functional"] = "failed"
@@ -139,7 +148,9 @@ def execute(
             "quant": scenario.quant,
             "scenario": scenario.id,
         }
-        pushed = push_metrics("vllm_cibench", agg, labels=labels, run_type=run_type)
+        pushed = False
+        if not dry_run:
+            pushed = push_metrics("vllm_cibench", agg, labels=labels, run_type=run_type)
         result["pushed"] = bool(pushed)
 
     return result

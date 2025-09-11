@@ -65,3 +65,17 @@ def test_execute_daily_push(monkeypatch: pytest.MonkeyPatch):
     )
     assert called["flag"] is True
     assert res["pushed"] is True
+
+
+def test_execute_dry_run(monkeypatch: pytest.MonkeyPatch):
+    """dry_run 下应跳过发现与探活，但仍产出汇总。"""
+
+    res = rp.execute(
+        scenario_id="local_single_qwen3-32b_guided_w8a8",
+        run_type="pr",
+        root=str(Path.cwd()),
+        timeout_s=0.0,
+        dry_run=True,
+    )
+    assert res["base_url"].startswith("dry://")
+    assert res["functional"] in ("ok", "skipped")

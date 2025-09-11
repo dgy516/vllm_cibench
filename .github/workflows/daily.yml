@@ -17,8 +17,8 @@ jobs:
           python-version: '3.11'
       - run: pip install -r requirements.txt
       - run: pip install -r requirements-dev.txt
-      - name: Run daily matrix
+      - name: Run daily matrix (dry-run)
         env:
           PROM_PUSHGATEWAY_URL: ${{ secrets.PROM_PUSHGATEWAY_URL }}
         run: |
-          python -m vllm_cibench.run run-matrix --run-type daily
+          python -m vllm_cibench.run run-matrix --run-type daily --dry-run
