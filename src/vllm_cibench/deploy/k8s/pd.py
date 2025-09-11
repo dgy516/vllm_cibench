@@ -1,7 +1,7 @@
-"""K8s Hybrid 部署适配（通过 NodePort 直连）。
+"""K8s PD（Pipeline/Prefill/Decode 分离）部署适配。
 
-基于场景配置中的 `k8s.{namespace, service_name, port_name}` 字段，
-发现可访问的 `base_url` 并进行健康探活。
+从场景配置中解析 PD 专属参数（scheduler/prefill/decode），
+并基于统一的 Service 发现逻辑获取对外 `base_url` 与探活能力。
 """
 
 from __future__ import annotations
@@ -15,10 +15,10 @@ from .kubernetes_client import discover_service_base_url, wait_k8s_service_ready
 
 
 def _k8s_params_from_scenario(s: Scenario) -> Tuple[str, str, str, str]:
-    """从场景对象提取 K8s 必需参数。
+    """提取用于服务发现的 K8s 参数。
 
     参数:
-        s: `Scenario` 对象，`raw.k8s` 中包含 `namespace/service_name/port_name`。
+        s: 场景对象，`raw.k8s` 中包含 `namespace/service_name/port_name`。
 
     返回值:
         (namespace, service_name, port_name, path_prefix)
@@ -33,16 +33,54 @@ def _k8s_params_from_scenario(s: Scenario) -> Tuple[str, str, str, str]:
     port_name = str(k8s.get("port_name", "http"))
     path_prefix = str(s.raw.get("base_path", "/v1"))
     if not service_name:
-        raise KeyError("scenario.k8s.service_name is required for k8s-hybrid mode")
+        raise KeyError("scenario.k8s.service_name is required for k8s-pd mode")
     return namespace, service_name, port_name, path_prefix
 
 
-def discover_base_url(s: Scenario, incluster: bool = False) -> str:
-    """根据场景发现可访问的基础 URL。
+def _pd_params_from_scenario(s: Scenario) -> Dict[str, str]:
+    """提取 PD 参数（scheduler/prefill/decode）。
+
+    参数:
+        s: 场景对象，`raw.pd` 中包含三段参数字符串。
+
+    返回值:
+        dict: {'scheduler_params': str, 'prefill_params': str, 'decode_params': str}
+
+    副作用:
+        无。
+    """
+
+    pd_cfg: Dict[str, object] = s.raw.get("pd", {}) or {}
+    out = {
+        "scheduler_params": str(pd_cfg.get("scheduler_params", "")),
+        "prefill_params": str(pd_cfg.get("prefill_params", "")),
+        "decode_params": str(pd_cfg.get("decode_params", "")),
+    }
+    return out
+
+
+def build_pd_args(s: Scenario) -> Dict[str, str]:
+    """返回 PD 模式的三段参数，供启动/文档化使用。
 
     参数:
         s: 场景对象。
-        incluster: 是否使用集群内配置。
+
+    返回值:
+        dict: 同 `_pd_params_from_scenario` 的输出。
+
+    副作用:
+        无。
+    """
+
+    return _pd_params_from_scenario(s)
+
+
+def discover_base_url(s: Scenario, incluster: bool = False) -> str:
+    """根据场景发现可访问的基础 URL（NodePort + InternalIP）。
+
+    参数:
+        s: 场景对象。
+        incluster: 是否使用容器内配置。
 
     返回值:
         str: 形如 `http://<node_ip>:<node_port>/v1`。
@@ -67,13 +105,13 @@ def wait_ready(
     interval_s: float = 1.0,
     incluster: bool = False,
 ) -> bool:
-    """等待服务就绪（HTTP 200）。
+    """等待 PD 服务就绪（HTTP 200）。
 
     参数:
         s: 场景对象。
         timeout_s: 总超时（秒）。
         interval_s: 轮询间隔（秒）。
-        incluster: 是否使用集群内配置。
+        incluster: 是否使用容器内配置。
 
     返回值:
         bool: 就绪返回 True；否则 False。
