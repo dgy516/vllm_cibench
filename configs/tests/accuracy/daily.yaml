@@ -5,4 +5,3 @@ debug: false
 max_tokens: 16384
 temperature: 0.6
 num_threads: 32
-
