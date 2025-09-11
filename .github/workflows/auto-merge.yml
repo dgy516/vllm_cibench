@@ -18,9 +18,18 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - name: Enable auto-merge on the PR
+      - name: Enable auto-merge (rebase)
+        id: enable_rebase
         uses: peter-evans/enable-pull-request-automerge@v3
+        continue-on-error: true
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           pull-request-number: ${{ github.event.pull_request.number }}
           merge-method: rebase
+      - name: Enable auto-merge (squash fallback)
+        if: steps.enable_rebase.outcome == 'failure'
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          pull-request-number: ${{ github.event.pull_request.number }}
+          merge-method: squash
