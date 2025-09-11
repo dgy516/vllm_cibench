@@ -5,6 +5,21 @@
 - 依赖工具：`pytest`、`black`、`ruff`、`mypy`（严格模式）；覆盖率 ≥85%
 - 安全：不提交任何密钥；如需 Pushgateway，使用环境变量 `PROM_PUSHGATEWAY_URL`
 
+### Pre-commit（强烈建议启用）
+- 安装并启用：
+  - `pip install pre-commit`
+  - `pre-commit install`
+  - 首次全量运行：`pre-commit run -a`
+- 本仓库提供 `.pre-commit-config.yaml`，包含：基础钩子（空白/换行/冲突检测/大文件/私钥）、Black、Ruff、Yamllint。
+
+### 保护分支与合并策略
+- `main` 为保护分支（要求 PR 审核与 CI 通过后合入），禁止直接 push。
+- 需在 GitHub 仓库 Settings → Branches 配置 Branch protection rule：
+  - Require a pull request before merging（需要代码审核）
+  - Require status checks to pass before merging（启用本仓库 CI）
+  - Restrict who can push to matching branches（可选）
+  - 可选择允许 squash/merge/rebase 任意一种合并策略
+
 ## 目录结构（建议）
 - `src/vllm_cibench/`：launcher、runners（functional/perf/accuracy）、metrics、config loader
 - `configs/`：
@@ -48,6 +63,8 @@
 - 阶段：lint → typecheck → unit → functional → perf → accuracy → 汇总；失败继续
 - 必需门（PR）：Lint/Type/Unit/Functional 必须通过；Accuracy 低于阈值失败；Performance 与最近一次 daily 基线对比：TTFT/E2E P99 回归>10% 失败、QPS 下降>5% 失败、Fail Rate >5% 失败
 - 计划任务：Asia/Shanghai；UTC 00:00 运行；产物保留期：PR 14 天、每日 30 天
+
+提示：本仓库提供了一个 `Protect main` 的 GitHub Actions 守卫（禁止直接 push 到 main，要求通过 PR 合并）。请同时启用仓库层面的保护分支设置以强约束执行。
 
 ## 注意事项
 - K8s 访问使用 NodePort（`service_name(+port_name=http)` 优先解析；否则使用配置中的 `node_port`）
