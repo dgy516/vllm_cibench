@@ -10,7 +10,8 @@
   - `pip install pre-commit`
   - `pre-commit install`
   - 首次全量运行：`pre-commit run -a`
-- 本仓库提供 `.pre-commit-config.yaml`，包含：基础钩子（空白/换行/冲突检测/大文件/私钥）、Black、Ruff、Yamllint。
+- 本仓库提供 `.pre-commit-config.yaml`，包含：基础钩子（空白/换行/冲突检测/大文件/私钥/YAML 语法）、Black、Ruff、Yamllint、MarkdownLint。
+- CI 会自动执行 pre-commit 钩子，确保本地与 CI 一致；如需修复按照提示本地运行 `pre-commit run -a`。
 
 ### 保护分支与合并策略
 - `main` 为保护分支（要求 PR 审核与 CI 通过后合入），禁止直接 push。
