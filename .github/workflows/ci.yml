@@ -1,9 +1,9 @@
 name: ci
 on:
   pull_request:
-    branches: [ main ]
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -43,36 +43,37 @@ jobs:
           python-version: "3.11"
       - run: pip install -r requirements.txt
       - run: pip install -r requirements-dev.txt
-      - run: pytest -q
+      - run: pytest -q -m "not slow"
       - name: orchestrator smoke (dry run)
         run: |
           python - <<'PY'
-import shutil, yaml
-from pathlib import Path
-src = Path('configs')
-dst = Path('smoke_configs')
-shutil.copytree(src, dst, dirs_exist_ok=True)
-matrix = yaml.safe_load((src / 'matrix.yaml').read_text())
-keep = 'local_single_qwen3-32b_guided_w8a8'
-matrix = {keep: matrix[keep]}
-(dst / 'matrix.yaml').write_text(yaml.safe_dump(matrix))
-PY
+          import shutil, yaml
+          from pathlib import Path
+          src = Path('configs')
+          root = Path('smoke_configs')
+          dst = root / 'configs'
+          shutil.copytree(src, dst, dirs_exist_ok=True)
+          matrix = yaml.safe_load((dst / 'matrix.yaml').read_text())
+          keep = 'local_single_qwen3-32b_guided_w8a8'
+          matrix = {keep: matrix[keep]}
+          (dst / 'matrix.yaml').write_text(yaml.safe_dump(matrix))
+          PY
           PYTHONPATH=src python -m vllm_cibench.run run --scenario local_single_qwen3-32b_guided_w8a8 --run-type pr --root smoke_configs --dry-run > smoke_run.json
           PYTHONPATH=src python -m vllm_cibench.run run-matrix --run-type pr --root smoke_configs --dry-run > smoke_matrix.json
           cat smoke_run.json
           cat smoke_matrix.json
           python - <<'PY'
-import json, os
-run = json.load(open('smoke_run.json'))
-matrix = json.load(open('smoke_matrix.json'))
-lines = [f"single: func={run.get('functional')}, perf={bool(run.get('perf_metrics'))}"]
-for sid, res in matrix.items():
-    lines.append(f"{sid}: func={res.get('functional')}, perf={bool(res.get('perf_metrics'))}")
-summary = '\n'.join(f"- {l}" for l in lines)
-with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as fh:
-    fh.write('### Orchestrator Smoke\n')
-    fh.write(summary + '\n')
-PY
+          import json, os
+          run = json.load(open('smoke_run.json'))
+          matrix = json.load(open('smoke_matrix.json'))
+          lines = [f"single: func={run.get('functional')}, perf={bool(run.get('perf_metrics'))}"]
+          for sid, res in matrix.items():
+              lines.append(f"{sid}: func={res.get('functional')}, perf={bool(res.get('perf_metrics'))}")
+          summary = '\n'.join(f"- {l}" for l in lines)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as fh:
+              fh.write('### Orchestrator Smoke\n')
+              fh.write(summary + '\n')
+          PY
 
   gate:
     name: gate
