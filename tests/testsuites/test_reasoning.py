@@ -31,6 +31,7 @@ def _fake_reasoning_resp() -> dict:
 
 
 def test_reasoning_content(requests_mock):
+    """验证 reasoning 参数和响应字段。"""
     base = "http://example.com/v1"
     url = base + "/chat/completions"
     requests_mock.post(url, json=_fake_reasoning_resp(), status_code=200)
