@@ -11,11 +11,11 @@ import os
 from typing import Dict, Iterable, Mapping, Optional
 
 # isort: off
-from prometheus_client import (
+from prometheus_client import (  # type: ignore[import-not-found]
     CollectorRegistry,
     Gauge,
     push_to_gateway,
-)  # type: ignore
+)
 
 # isort: on
 

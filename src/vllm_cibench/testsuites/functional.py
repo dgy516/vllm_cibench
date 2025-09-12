@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, cast
 
 from vllm_cibench.clients.openai_client import OpenAICompatClient
 
@@ -15,17 +15,18 @@ def run_basic_chat(
     model: str,
     messages: List[Mapping[str, Any]],
     **params: Any,
-) -> Dict[str, Any]:
+) -> Dict[str, Any] | List[Dict[str, Any]]:
     """运行最小 Chat Completions 请求并返回响应。
 
     参数:
         client: OpenAI 兼容客户端。
         model: 模型名。
         messages: OpenAI 消息数组。
-        params: 其他请求参数（如 temperature/top_p 等）。
+        params: 其他请求参数（如 temperature/top_p/stream 等）。
 
     返回值:
-        dict: 接口返回的 JSON 响应。
+        当 `stream=False` 时返回单个 JSON 响应；当 `stream=True` 时返
+        回按顺序排列的 chunk 列表。
 
     副作用:
         发起网络请求。
@@ -57,4 +58,5 @@ def run_smoke_suite(
     messages: List[Mapping[str, Any]] = [
         {"role": "user", "content": "Say hello in one word."}
     ]
-    return run_basic_chat(client, model, messages, temperature=0)
+    out = run_basic_chat(client, model, messages, temperature=0)
+    return cast(Dict[str, Any], out)
