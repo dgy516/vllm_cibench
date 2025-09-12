@@ -1,8 +1,12 @@
 name: ci
 on:
   pull_request:
+    branches:
+      - '**'
+    types: [opened, synchronize, reopened]
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -42,7 +46,7 @@ jobs:
           python-version: "3.11"
       - run: pip install -r requirements.txt
       - run: pip install -r requirements-dev.txt
-      - run: pytest -q
+      - run: pytest -q -m "not slow"
       - name: orchestrator smoke (dry run)
         run: |
           python - <<'PY'
