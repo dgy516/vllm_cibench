@@ -19,4 +19,3 @@ typing-extensions>=4.7
 # CLI testing helpers
 typer~=0.12
 requests-mock~=1.12
-types-requests~=2.32

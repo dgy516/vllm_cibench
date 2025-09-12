@@ -143,8 +143,21 @@ def run_matrix(
     root: Optional[str] = typer.Option(
         None, "--root", help="项目根目录（默认当前工作目录）"
     ),
+    timeout: float = typer.Option(60.0, "--timeout", help="探活最大等待时长（秒）"),
 ) -> None:
-    """批量执行 matrix.yaml 中的所有场景。"""
+    """批量执行 `matrix.yaml` 中的所有场景并输出结果。
 
-    res = run_matrix_mod.execute_matrix(run_type=run_type, root=root)
+    参数:
+        run_type: 运行类型（pr/daily）。
+        root: 项目根目录，缺省为当前工作目录。
+        timeout: 探活最大等待时长（秒）。
+
+    返回值:
+        无返回；以 JSON 打印执行结果到标准输出。
+
+    副作用:
+        读取配置并对每个场景执行集成编排，可能进行网络探活。
+    """
+
+    res = run_matrix_mod.execute_matrix(run_type=run_type, root=root, timeout_s=timeout)
     typer.echo(json.dumps(res, ensure_ascii=False))
