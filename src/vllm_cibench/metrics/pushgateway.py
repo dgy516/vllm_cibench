@@ -10,7 +10,11 @@ from __future__ import annotations
 import os
 from typing import Dict, Iterable, Mapping, Optional
 
-from prometheus_client import CollectorRegistry, Gauge, push_to_gateway  # type: ignore[import-not-found]
+from prometheus_client import (  # type: ignore[import-not-found]
+    CollectorRegistry,
+    Gauge,
+    push_to_gateway,
+)
 
 
 def build_registry(metrics: Mapping[str, float]) -> CollectorRegistry:
