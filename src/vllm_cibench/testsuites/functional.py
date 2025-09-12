@@ -60,3 +60,29 @@ def run_smoke_suite(
     ]
     out = run_basic_chat(client, model, messages, temperature=0)
     return cast(Dict[str, Any], out)
+
+
+def get_reasoning(out: Mapping[str, Any], key: str = "reasoning_content") -> str:
+    """从响应中提取推理内容。
+
+    参数:
+        out: `/v1/chat/completions` 的响应体。
+        key: 推理字段键名，默认 ``reasoning_content``。
+
+    返回值:
+        str: 推理内容字符串。
+
+    副作用:
+        无。
+
+    异常:
+        KeyError: 当响应缺少目标字段时抛出。
+    """
+
+    choices = out.get("choices")
+    if not choices:
+        raise KeyError("choices missing in response")
+    message = choices[0].get("message", {})
+    if key not in message:
+        raise KeyError(f"reasoning key not found: {key}")
+    return str(message[key])
