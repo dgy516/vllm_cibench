@@ -54,6 +54,26 @@ def test_push_success(monkeypatch: pytest.MonkeyPatch):
     assert called["grouping_key"]["model"] == "m"
 
 
+def test_push_metrics_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    """dry_run=True 时应跳过 push_to_gateway。"""
+
+    called = {"flag": False}
+
+    def fake_push(url: str, job: str, registry, grouping_key):  # pragma: no cover
+        called["flag"] = True
+
+    monkeypatch.setattr(pg, "push_to_gateway", fake_push)
+    ok = pg.push_metrics(
+        job="ci",
+        metrics={"ci_perf_throughput_rps_avg": 1.0},
+        labels={"model": "m"},
+        run_type="daily",
+        gateway_url="http://pushgw:9091",
+        dry_run=True,
+    )
+    assert ok is False and called["flag"] is False
+
+
 def test_metrics_from_perf_records():
     out = pg.metrics_from_perf_records(
         [

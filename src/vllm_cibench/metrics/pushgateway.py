@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import os
+import logging
 from typing import Dict, Iterable, Mapping, Optional
 
 from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
@@ -71,6 +72,7 @@ def push_metrics(
     *,
     gateway_url: Optional[str] = None,
     run_type: str = "pr",
+    dry_run: bool = False,
 ) -> bool:
     """向 Pushgateway 推送指标（仅在 daily 时启用）。
 
@@ -80,15 +82,16 @@ def push_metrics(
         labels: 作为 `grouping_key` 的标签（例如 {model, quant, scenario}）。
         gateway_url: 覆盖默认环境变量 `PROM_PUSHGATEWAY_URL`。
         run_type: 运行类型，只有 `daily` 时才推送；其它值直接跳过并返回 False。
+        dry_run: 若为 True，则跳过实际推送（例如测试或调试）。
 
     返回值:
         bool: True 表示已尝试推送（并认为成功），False 表示跳过推送。
 
     副作用:
-        可能发起网络请求到 Pushgateway；异常将被吞掉并返回 False。
+        可能发起网络请求到 Pushgateway；异常将记录 warning 并返回 False。
     """
 
-    if run_type != "daily":
+    if run_type != "daily" or dry_run:
         return False
 
     url = gateway_url or os.environ.get("PROM_PUSHGATEWAY_URL")
@@ -100,5 +103,6 @@ def push_metrics(
         grouping = dict(labels or {})
         push_to_gateway(url, job=job, registry=reg, grouping_key=grouping)
         return True
-    except Exception:
+    except Exception as exc:  # pragma: no cover - 网络异常容错
+        logging.warning("push_metrics failed: %s", exc)
         return False

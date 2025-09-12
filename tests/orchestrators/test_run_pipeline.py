@@ -65,3 +65,34 @@ def test_execute_daily_push(monkeypatch: pytest.MonkeyPatch):
     )
     assert called["flag"] is True
     assert res["pushed"] is True
+
+
+def test_execute_daily_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    """dry_run=True 时不应推送指标。"""
+
+    monkeypatch.setattr(
+        rp,
+        "_discover_and_wait",
+        lambda base, s, timeout_s=60.0: "http://127.0.0.1:9000/v1",
+    )
+    monkeypatch.setattr(
+        rp,
+        "run_smoke_suite",
+        lambda base_url, model: {"choices": [{"message": {"content": "ok"}}]},
+    )
+    called = {"dry": False}
+
+    def fake_push(*_a, dry_run: bool, **_kw):
+        called["dry"] = dry_run
+        return False
+
+    monkeypatch.setattr(rp, "push_metrics", fake_push)
+    res = rp.execute(
+        scenario_id="local_single_qwen3-32b_guided_w8a8",
+        run_type="daily",
+        root=str(Path.cwd()),
+        timeout_s=0.1,
+        dry_run=True,
+    )
+    assert called["dry"] is True
+    assert res["pushed"] is False

@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Skip Pushgateway push'
+        required: false
+        default: 'false'
 
 jobs:
   run-matrix:
@@ -20,5 +25,11 @@ jobs:
       - name: Run daily matrix
         env:
           PROM_PUSHGATEWAY_URL: ${{ secrets.PROM_PUSHGATEWAY_URL }}
+          DRY_RUN: ${{ github.event.inputs.dry-run }}
+          IS_FORK: ${{ github.event.repository.fork }}
         run: |
-          python -m vllm_cibench.run run-matrix --run-type daily
+          if [[ -z "$PROM_PUSHGATEWAY_URL" || "$IS_FORK" == "true" || "$DRY_RUN" == "true" ]]; then
+            python -m vllm_cibench.run run-matrix --run-type daily --dry-run
+          else
+            python -m vllm_cibench.run run-matrix --run-type daily
+          fi
