@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Dict
+
 import pytest
 
 from vllm_cibench.clients.http import http_get, wait_for_http, wait_for_ready
@@ -35,7 +37,7 @@ class DummyResp:
 def test_wait_for_http_success(monkeypatch: pytest.MonkeyPatch):
     """模拟 200 响应应立即返回 True。"""
 
-    def fake_get(url: str, timeout: float) -> DummyResp:
+    def fake_get(url: str, timeout: float, headers=None) -> DummyResp:
         return DummyResp(200)
 
     monkeypatch.setattr("requests.get", fake_get)
@@ -45,8 +47,31 @@ def test_wait_for_http_success(monkeypatch: pytest.MonkeyPatch):
 def test_wait_for_http_fail(monkeypatch: pytest.MonkeyPatch):
     """请求持续失败时返回 False。"""
 
-    def fake_get(url: str, timeout: float) -> DummyResp:
+    def fake_get(url: str, timeout: float, headers=None) -> DummyResp:
         raise RuntimeError("boom")
 
     monkeypatch.setattr("requests.get", fake_get)
     assert wait_for_http("http://x", timeout_s=0.01, max_attempts=2) is False
+
+
+def test_wait_for_http_custom_status_and_headers(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """自定义状态码与请求头应被正确处理。"""
+
+    captured: Dict[str, str] = {}
+
+    def fake_get(url: str, timeout: float, headers=None) -> DummyResp:
+        if headers:
+            captured.update(headers)
+        return DummyResp(204)
+
+    monkeypatch.setattr("requests.get", fake_get)
+    ok = wait_for_http(
+        "http://x",
+        timeout_s=0.01,
+        max_attempts=1,
+        success_status=204,
+        headers={"X-Test": "1"},
+    )
+    assert ok is True and captured.get("X-Test") == "1"

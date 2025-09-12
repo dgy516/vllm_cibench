@@ -76,25 +76,33 @@ def wait_for_ready(
     return False
 
 
-def wait_for_http(url: str, timeout_s: float = 1.0, max_attempts: int = 5) -> bool:
-    """轮询等待 HTTP 服务返回 200（简单包装）。
+def wait_for_http(
+    url: str,
+    timeout_s: float = 1.0,
+    max_attempts: int = 5,
+    success_status: int = 200,
+    headers: Optional[Dict[str, str]] = None,
+) -> bool:
+    """轮询等待 HTTP 服务返回期望状态码。
 
     参数:
         url: 健康检查的完整 URL。
         timeout_s: 单次请求的超时时间（秒）。
         max_attempts: 最大重试次数。
+        success_status: 视为成功的状态码（默认 200）。
+        headers: 可选的请求头（如认证信息）。
 
     返回值:
         bool: 成功返回 True，超过重试次数仍失败返回 False。
 
     副作用:
-        发起网络请求并 sleep。
+        发起网络请求并 `sleep`。
     """
 
     for _ in range(max_attempts):
         try:
-            resp = requests.get(url, timeout=timeout_s)
-            if resp.status_code == 200:
+            resp = requests.get(url, timeout=timeout_s, headers=headers)
+            if resp.status_code == success_status:
                 return True
         except Exception:
             pass
