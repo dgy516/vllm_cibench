@@ -139,10 +139,6 @@ def run(
     typer.echo(json.dumps(res, ensure_ascii=False))
 
 
-if __name__ == "__main__":
-    main()
-
-
 @app.command("run-matrix")
 def run_matrix(
     run_type: str = typer.Option("pr", "--run-type", help="运行类型: pr/daily"),
@@ -167,3 +163,7 @@ def run_matrix(
 
     res = run_matrix_mod.execute_matrix(run_type=run_type, root=root, dry_run=dry_run)
     typer.echo(json.dumps(res, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()
