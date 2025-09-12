@@ -21,11 +21,11 @@ def _make_scenario() -> Scenario:
         "base_path": "/v1",
     }
     return Scenario(
-        id=raw["id"],
-        mode=raw["mode"],
-        served_model_name=raw["served_model_name"],
-        model=raw["model"],
-        quant=raw["quant"],
+        id=str(raw["id"]),
+        mode=str(raw["mode"]),
+        served_model_name=str(raw["served_model_name"]),
+        model=str(raw["model"]),
+        quant=str(raw["quant"]),
         raw=raw,
     )
 
@@ -44,6 +44,7 @@ def test_discover_base_url_monkeypatch(monkeypatch):
     assert called["namespace"] == "default"
     assert called["service_name"] == "infer-vllm"
     assert called["port_name"] == "http"
+    assert called.get("node_port") is None
 
 
 def test_wait_ready_monkeypatch(monkeypatch):
@@ -61,3 +62,34 @@ def test_wait_ready_monkeypatch(monkeypatch):
     assert called["service_name"] == "infer-vllm"
     assert called["port_name"] == "http"
     assert called["path_prefix"] == "/v1"
+    assert called.get("node_port") is None
+
+
+def test_node_port_override(monkeypatch):
+    s = _make_scenario()
+    s.raw["k8s"]["node_port"] = 31000
+    called = {}
+
+    def fake_discover(**kw):
+        called.update(kw)
+        return "http://10.0.0.1:31000/v1"
+
+    monkeypatch.setattr(hybrid, "discover_service_base_url", fake_discover)
+    url = hybrid.discover_base_url(s)
+    assert url.endswith("31000/v1")
+    assert called["node_port"] == 31000
+
+
+def test_wait_ready_node_port_override(monkeypatch):
+    s = _make_scenario()
+    s.raw["k8s"]["node_port"] = 31000
+    called = {}
+
+    def fake_wait(**kw):
+        called.update(kw)
+        return True
+
+    monkeypatch.setattr(hybrid, "wait_k8s_service_ready", fake_wait)
+    ok = hybrid.wait_ready(s)
+    assert ok is True
+    assert called["node_port"] == 31000
