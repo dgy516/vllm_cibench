@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    concurrency:
+      group: daily-run-matrix
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,4 +24,22 @@ jobs:
         env:
           PROM_PUSHGATEWAY_URL: ${{ secrets.PROM_PUSHGATEWAY_URL }}
         run: |
-          python -m vllm_cibench.run run-matrix --run-type daily --dry-run
+          python -m vllm_cibench.run run-matrix --run-type daily --dry-run --concurrency 3 --scenario-timeout 60 --tolerate-failures --output run-matrix.json
+      - name: Summarize results
+        run: |
+          echo "# run-matrix summary" >> $GITHUB_STEP_SUMMARY
+          echo '\n```json' >> $GITHUB_STEP_SUMMARY
+          tail -c 2000 run-matrix.json >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          if command -v jq >/dev/null 2>&1; then
+            echo "\n## Stats" >> $GITHUB_STEP_SUMMARY
+            echo "- total: $(jq -r '.summary.total' run-matrix.json)" >> $GITHUB_STEP_SUMMARY
+            echo "- success: $(jq -r '.summary.success' run-matrix.json)" >> $GITHUB_STEP_SUMMARY
+            echo "- failed: $(jq -r '.summary.failed' run-matrix.json)" >> $GITHUB_STEP_SUMMARY
+            echo "- elapsed_s: $(jq -r '.summary.elapsed_s' run-matrix.json)" >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Upload run-matrix artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-matrix-${{ github.ref_name }}-${{ github.sha }}.json
+          path: run-matrix.json
