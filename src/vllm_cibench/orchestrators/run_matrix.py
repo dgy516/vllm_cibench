@@ -26,13 +26,14 @@ def scenarios_from_matrix(matrix: Dict[str, object]) -> Iterable[str]:
 
 
 def execute_matrix(
-    run_type: str = "pr", *, root: Optional[str] = None
+    run_type: str = "pr", *, root: Optional[str] = None, timeout_s: float = 60.0
 ) -> Dict[str, object]:
     """执行 matrix 中的所有场景，返回结果映射。
 
     参数:
         run_type: 运行类型（pr/daily）。
         root: 仓库根路径，默认 CWD。
+        timeout_s: 探活最大等待时长（秒），会传递给单场景执行函数。
 
     返回值:
         dict: {scenario_id: result_dict}
@@ -46,6 +47,6 @@ def execute_matrix(
     results: Dict[str, object] = {}
     for sid in scenarios_from_matrix(matrix):
         results[sid] = run_pipeline.execute(
-            scenario_id=sid, run_type=run_type, root=str(base)
+            scenario_id=sid, run_type=run_type, root=str(base), timeout_s=timeout_s
         )
     return results

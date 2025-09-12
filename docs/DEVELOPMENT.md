@@ -36,6 +36,9 @@
 - 场景执行顺序：启动→功能→性能→精度→（每日）推送；失败继续，最后汇总
 - PR：默认本地场景；产物保留，不推送指标；性能/精度为精简档（但性能纳入必需门，按基线比对）
 - 每日：K8s 全量矩阵；推送指标并用于 Grafana 展示
+- CLI：
+  - `python -m vllm_cibench.run run --scenario <id> --run-type pr --timeout 60` 执行单场景编排，可自定义探活等待时长。
+  - `python -m vllm_cibench.run run-matrix --run-type pr --timeout 60` 批量执行 `configs/matrix.yaml` 中的所有场景，同样支持自定义探活等待时长。
 
 ## 功能测试要点
 - 覆盖 `/v1/chat/completions` 与 `/v1/completions`；非流式与流式均覆盖；多轮对话（含 `system/assistant` 历史）
