@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional
 
@@ -61,7 +62,7 @@ class OpenAICompatClient:
         model: str,
         messages: List[Mapping[str, Any]],
         **params: Any,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, Any] | List[Dict[str, Any]]:
         """调用 `/v1/chat/completions` 端点。
 
         参数:
@@ -70,7 +71,8 @@ class OpenAICompatClient:
             params: 其他可选参数（如 temperature/top_p/stream 等）。
 
         返回值:
-            dict: 原始 JSON 响应体（字典）。
+            当 `stream=False` 时返回单个 JSON 响应；当 `stream=True` 时返
+            回按顺序排列的 chunk 列表。
 
         副作用:
             发起网络请求；可能抛出 `requests.RequestException`。
@@ -79,6 +81,25 @@ class OpenAICompatClient:
         url = f"{self.base_url.rstrip('/')}/chat/completions"
         payload: Dict[str, Any] = {"model": model, "messages": messages}
         payload.update(params)
-        resp = requests.post(url, headers=self._headers(), json=payload, timeout=30)
+        stream = bool(params.get("stream"))
+        resp = requests.post(
+            url,
+            headers=self._headers(),
+            json=payload,
+            timeout=30,
+            stream=stream,
+        )
         resp.raise_for_status()
-        return resp.json()
+        if not stream:
+            return resp.json()
+
+        chunks: List[Dict[str, Any]] = []
+        for line in resp.iter_lines():
+            if not line:
+                continue
+            if line.startswith(b"data:"):
+                data = line[len(b"data:") :].strip()
+                if data == b"[DONE]":
+                    break
+                chunks.append(json.loads(data))
+        return chunks
