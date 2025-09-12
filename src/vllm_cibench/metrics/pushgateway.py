@@ -33,7 +33,7 @@ def build_registry(metrics: Mapping[str, float]) -> CollectorRegistry:
 
 
 def metrics_from_perf_records(
-    records: Iterable[Mapping[str, float]]
+    records: Iterable[Mapping[str, float]],
 ) -> Dict[str, float]:
     """从性能明细记录聚合出便于展示的指标。
 
