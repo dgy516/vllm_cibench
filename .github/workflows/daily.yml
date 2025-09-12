@@ -4,10 +4,17 @@ on:
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Skip Pushgateway push'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   run-matrix:
     runs-on: ubuntu-latest
+    if: github.repository == 'dgy516/vllm_cibench'
     permissions:
       contents: read
     steps:
@@ -21,4 +28,8 @@ jobs:
         env:
           PROM_PUSHGATEWAY_URL: ${{ secrets.PROM_PUSHGATEWAY_URL }}
         run: |
-          python -m vllm_cibench.run run-matrix --run-type daily
+          ARGS=""
+          if [ "${{ inputs.dry-run }}" = "true" ]; then
+            ARGS="--dry-run"
+          fi
+          python -m vllm_cibench.run run-matrix --run-type daily $ARGS

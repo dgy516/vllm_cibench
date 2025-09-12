@@ -78,6 +78,7 @@ def execute(
     *,
     root: Optional[str] = None,
     timeout_s: float = 60.0,
+    dry_run: bool = False,
 ) -> Dict[str, Any]:
     """执行编排：探活→功能→性能→（daily）指标推送。
 
@@ -86,6 +87,7 @@ def execute(
         run_type: 运行类型，`pr` 或 `daily`。
         root: 仓库根路径（便于测试传入），默认使用 CWD。
         timeout_s: 探活的最大时长（秒）。
+        dry_run: 若为 True，即使在 daily 运行也不会推送指标。
 
     返回值:
         dict: 汇总结果，包括 `base_url`、`functional` 状态、`perf_metrics` 与 `pushed` 标记等。
@@ -139,7 +141,14 @@ def execute(
             "quant": scenario.quant,
             "scenario": scenario.id,
         }
-        pushed = push_metrics("vllm_cibench", agg, labels=labels, run_type=run_type)
-        result["pushed"] = bool(pushed)
+        if not dry_run:
+            pushed = push_metrics(
+                "vllm_cibench",
+                agg,
+                labels=labels,
+                run_type=run_type,
+                dry_run=dry_run,
+            )
+            result["pushed"] = bool(pushed)
 
     return result

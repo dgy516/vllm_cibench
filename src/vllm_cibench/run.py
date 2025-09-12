@@ -15,7 +15,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
-import typer
+import typer  # type: ignore[import-not-found]
 
 from .config import ScenarioRegistry, load_matrix, resolve_plan
 from .orchestrators import run_matrix as run_matrix_mod
@@ -111,6 +111,7 @@ def run(
         None, "--root", help="项目根目录（默认当前工作目录）"
     ),
     timeout: float = typer.Option(60.0, "--timeout", help="探活最大等待时长（秒）"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="仅运行不推送指标"),
 ) -> None:
     """执行集成编排：探活→功能→性能→（daily）指标推送。
 
@@ -119,6 +120,7 @@ def run(
         run_type: 运行类型（pr/daily）。
         root: 项目根目录，便于在测试中传入固定路径；缺省为 CWD。
         timeout: 探活最大等待时长（秒）。
+        dry_run: 若为 True，即使 daily 也不会推送指标。
 
     返回值:
         无返回；以 JSON 打印编排结果到标准输出。
@@ -128,7 +130,11 @@ def run(
     """
 
     res = run_pipeline.execute(
-        scenario_id=scenario, run_type=run_type, root=root, timeout_s=timeout
+        scenario_id=scenario,
+        run_type=run_type,
+        root=root,
+        timeout_s=timeout,
+        dry_run=dry_run,
     )
     typer.echo(json.dumps(res, ensure_ascii=False))
 
@@ -143,8 +149,21 @@ def run_matrix(
     root: Optional[str] = typer.Option(
         None, "--root", help="项目根目录（默认当前工作目录）"
     ),
+    dry_run: bool = typer.Option(False, "--dry-run", help="仅运行不推送指标"),
 ) -> None:
-    """批量执行 matrix.yaml 中的所有场景。"""
+    """批量执行 matrix.yaml 中的所有场景。
 
-    res = run_matrix_mod.execute_matrix(run_type=run_type, root=root)
+    参数:
+        run_type: 运行类型（pr/daily）。
+        root: 仓库根目录，缺省为 CWD。
+        dry_run: 若为 True，则跳过指标推送。
+
+    返回值:
+        无；结果以 JSON 打印到标准输出。
+
+    副作用:
+        读取配置并调用 `run_pipeline.execute`，可能触发网络探活。
+    """
+
+    res = run_matrix_mod.execute_matrix(run_type=run_type, root=root, dry_run=dry_run)
     typer.echo(json.dumps(res, ensure_ascii=False))
