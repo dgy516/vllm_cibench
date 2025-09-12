@@ -1,5 +1,6 @@
 # Development dependencies for vllm_cibench
 # Python: 3.10+
+-r requirements.txt
 
 # Test
 pytest~=8.3
