@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from ..clients.http import wait_for_http, wait_for_ready
 from ..config import Scenario
@@ -61,12 +61,18 @@ def scenario_base_url(scenario: Scenario) -> str:
     return str(base_url)
 
 
-def wait_service_ready(scenario: Scenario, timeout_seconds: int = 60) -> bool:
+def wait_service_ready(
+    scenario: Scenario,
+    timeout_seconds: Optional[int] = None,
+    headers: Optional[Dict[str, str]] = None,
+) -> bool:
     """等待本地服务就绪。
 
     参数:
         scenario: 场景对象。
-        timeout_seconds: 最大等待时长（秒）。
+        timeout_seconds: 最大等待时长（秒），缺省读取场景中
+            `startup_timeout_seconds`，若未配置则使用 60。
+        headers: 探活请求的额外 HTTP 头。
 
     返回值:
         bool: 服务在超时前就绪返回 True，否则 False。
@@ -76,7 +82,8 @@ def wait_service_ready(scenario: Scenario, timeout_seconds: int = 60) -> bool:
     """
 
     url = scenario_base_url(scenario)
-    return wait_for_ready(url, timeout_seconds=timeout_seconds)
+    timeout = timeout_seconds or int(scenario.raw.get("startup_timeout_seconds", 60))
+    return wait_for_ready(url, timeout_seconds=timeout, headers=headers)
 
 
 def start_local(
