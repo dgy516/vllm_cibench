@@ -143,8 +143,11 @@ def run_matrix(
     root: Optional[str] = typer.Option(
         None, "--root", help="项目根目录（默认当前工作目录）"
     ),
+    timeout: float = typer.Option(60.0, "--timeout", help="探活最大等待时长（秒）"),
 ) -> None:
     """批量执行 matrix.yaml 中的所有场景。"""
 
-    res = run_matrix_mod.execute_matrix(run_type=run_type, root=root)
+    res = run_matrix_mod.execute_matrix(
+        run_type=run_type, root=root, timeout_s=timeout
+    )
     typer.echo(json.dumps(res, ensure_ascii=False))

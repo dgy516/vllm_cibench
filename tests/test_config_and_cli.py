@@ -8,6 +8,7 @@
 
 import json
 from pathlib import Path
+from typing import Dict
 
 import pytest
 
@@ -26,6 +27,7 @@ if yaml is None:  # pragma: no cover - 缺少依赖时跳过整个模块
 
 from vllm_cibench import config as cfg
 from vllm_cibench.run import app
+import vllm_cibench.run as run_cli
 
 pytestmark = pytest.mark.skipif(CliRunner is None, reason="typer not installed")
 
@@ -90,3 +92,19 @@ def test_scenario_registry_get():
     assert scenario.mode == "local"
     with pytest.raises(KeyError):
         registry.get("not_exists")
+
+
+def test_cli_run_matrix_timeout(monkeypatch: pytest.MonkeyPatch):
+    """校验 run-matrix CLI 能将超时参数传递给执行函数。"""
+
+    called: Dict[str, float] = {}
+
+    def fake_execute_matrix(*, run_type: str, root: str | None, timeout_s: float):
+        called["timeout"] = timeout_s
+        return {}
+
+    monkeypatch.setattr(run_cli.run_matrix_mod, "execute_matrix", fake_execute_matrix)
+    runner = CliRunner()
+    result = runner.invoke(app, ["run-matrix", "--timeout", "2.5"])
+    assert result.exit_code == 0, result.output
+    assert called["timeout"] == 2.5
