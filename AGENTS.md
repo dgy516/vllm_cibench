@@ -14,9 +14,12 @@ This repo hosts the ST (system tests) and CI suite for vLLM: start service (loca
 
 ## Build, Test, Develop
 - venv: `python3 -m venv .venv && source .venv/bin/activate`
-- install: `pip install -e .[dev]`
+- install: `pip install -r requirements-dev.txt`
 - unit/system tests: `pytest -q -m "not slow"`
-- local run: `python -m vllm_cibench.run --deploy local --scenario qwen32b_guided`
+- plan single scenario: `python -m vllm_cibench.run plan --scenario local_single_qwen3-32b_guided_w8a8 --run-type pr`
+- run single scenario (dry): `python -m vllm_cibench.run run --scenario local_single_qwen3-32b_guided_w8a8 --run-type pr --dry-run`
+- run matrix: `python -m vllm_cibench.run run-matrix --run-type pr --dry-run`
+- metrics push occurs only when `run_type=daily` and `PROM_PUSHGATEWAY_URL` is set; use `--dry-run` to skip push during local debug or CI reproduction
 - k8s deploy: `kubectl apply -f configs/deploy/infer_vllm_kubeinfer.yaml`; probe: `curl http://$IP:9000/v1/chat/completions`
 
 ## Style & Naming
