@@ -13,7 +13,12 @@ def test_execute_matrix_calls_pipeline(monkeypatch):
     called = []
 
     def fake_execute(
-        *, scenario_id: str, run_type: str, root: str, timeout_s: float = 60.0
+        *,
+        scenario_id: str,
+        run_type: str,
+        root: str,
+        timeout_s: float = 60.0,
+        dry_run: bool = False,
     ):
         called.append((scenario_id, run_type))
         return {"scenario": scenario_id, "ok": True}

@@ -28,7 +28,7 @@ def create_core_v1_api(incluster: bool = False):
     """
 
     # 延迟导入以便测试时可 monkeypatch
-    from kubernetes import client, config  # type: ignore[import-untyped]
+    from kubernetes import client, config  # type: ignore[import-not-found, import-untyped]
 
     if incluster:
         config.load_incluster_config()

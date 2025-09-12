@@ -38,6 +38,7 @@ def test_push_success(monkeypatch: pytest.MonkeyPatch):
         called["grouping_key"] = grouping_key
 
     monkeypatch.setattr(pg, "push_to_gateway", fake_push)
+    monkeypatch.setenv("GITHUB_REPOSITORY", "dgy516/vllm_cibench")
     ok = pg.push_metrics(
         job="ci",
         metrics={
@@ -52,6 +53,38 @@ def test_push_success(monkeypatch: pytest.MonkeyPatch):
     assert called["url"].startswith("http://pushgw")
     assert called["job"] == "ci"
     assert called["grouping_key"]["model"] == "m"
+
+
+def test_dry_run_skips_push(monkeypatch: pytest.MonkeyPatch):
+    called = {}
+
+    def fake_push(*a, **kw):
+        called["flag"] = True
+
+    monkeypatch.setattr(pg, "push_to_gateway", fake_push)
+    monkeypatch.setenv("GITHUB_REPOSITORY", "dgy516/vllm_cibench")
+    ok = pg.push_metrics(
+        job="ci",
+        metrics={"ci_perf_throughput_rps_avg": 1.0},
+        labels={},
+        run_type="daily",
+        gateway_url="http://pushgw:9091",
+        dry_run=True,
+    )
+    assert ok is False
+    assert "flag" not in called
+
+
+def test_skip_on_fork(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "someone/fork")
+    ok = pg.push_metrics(
+        job="ci",
+        metrics={"ci_perf_throughput_rps_avg": 1.0},
+        labels={"model": "dummy"},
+        run_type="daily",
+        gateway_url="http://pushgw:9091",
+    )
+    assert ok is False
 
 
 def test_metrics_from_perf_records():
