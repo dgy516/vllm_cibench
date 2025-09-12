@@ -12,6 +12,7 @@ from vllm_cibench.config import list_scenarios
 from vllm_cibench.deploy.local import (
     build_start_command,
     scenario_base_url,
+    wait_service_ready,
     start_local,
 )
 
@@ -83,3 +84,38 @@ def test_start_local_health_fail(monkeypatch: pytest.MonkeyPatch):
     with pytest.raises(RuntimeError):
         start_local(script=Path("scripts/start_local.sh"), health_url="http://x")
     assert terminated["flag"] is True
+
+
+def test_wait_service_ready_uses_scenario_timeout(monkeypatch: pytest.MonkeyPatch):
+    """未显式传参时应使用场景配置的 startup_timeout_seconds。"""
+
+    scenario = next(
+        s for s in list_scenarios(Path("configs/scenarios")) if s.mode == "local"
+    )
+    captured: dict[str, int] = {}
+
+    def fake_wait(url: str, timeout_seconds: int, headers=None) -> bool:
+        captured["timeout"] = timeout_seconds
+        return True
+
+    monkeypatch.setattr("vllm_cibench.deploy.local.wait_for_ready", fake_wait)
+    ok = wait_service_ready(scenario)
+    assert ok is True
+    assert captured["timeout"] == scenario.raw.get("startup_timeout_seconds")
+
+
+def test_wait_service_ready_override_timeout(monkeypatch: pytest.MonkeyPatch):
+    """显式传入 timeout_seconds 时应覆盖场景配置。"""
+
+    scenario = next(
+        s for s in list_scenarios(Path("configs/scenarios")) if s.mode == "local"
+    )
+    captured: dict[str, int] = {}
+
+    def fake_wait(url: str, timeout_seconds: int, headers=None) -> bool:
+        captured["timeout"] = timeout_seconds
+        return True
+
+    monkeypatch.setattr("vllm_cibench.deploy.local.wait_for_ready", fake_wait)
+    wait_service_ready(scenario, timeout_seconds=5)
+    assert captured["timeout"] == 5

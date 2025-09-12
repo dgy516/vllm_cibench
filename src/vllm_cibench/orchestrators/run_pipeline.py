@@ -41,13 +41,16 @@ def _find_scenario(root: Path, scenario_id: str) -> Scenario:
     raise KeyError(f"scenario not found: {scenario_id}")
 
 
-def _discover_and_wait(root: Path, s: Scenario, timeout_s: float = 60.0) -> str:
+def _discover_and_wait(
+    root: Path, s: Scenario, timeout_s: Optional[float] = None
+) -> str:
     """根据场景模式发现 base_url 并等待就绪，返回 base_url。
 
     参数:
         root: 仓库根目录（当前未使用，预留）。
         s: 场景对象。
-        timeout_s: 探活最大等待时长（秒）。
+        timeout_s: 探活最大等待时长（秒），缺省读取场景
+            `startup_timeout_seconds`，未配置则为 60。
 
     返回值:
         str: 服务基础 URL。
@@ -57,17 +60,18 @@ def _discover_and_wait(root: Path, s: Scenario, timeout_s: float = 60.0) -> str:
     """
 
     mode = s.mode
+    timeout = timeout_s or float(s.raw.get("startup_timeout_seconds", 60))
     if mode == "local":
         base_url = scenario_base_url(s)
-        wait_service_ready(s, timeout_seconds=int(timeout_s))
+        wait_service_ready(s, timeout_seconds=int(timeout))
         return base_url
     if mode == "k8s-hybrid":
         base_url = k8s_hybrid.discover_base_url(s)
-        k8s_hybrid.wait_ready(s, timeout_s=timeout_s)
+        k8s_hybrid.wait_ready(s, timeout_s=timeout)
         return base_url
     if mode == "k8s-pd":
         base_url = k8s_pd.discover_base_url(s)
-        k8s_pd.wait_ready(s, timeout_s=timeout_s)
+        k8s_pd.wait_ready(s, timeout_s=timeout)
         return base_url
     raise ValueError(f"unsupported scenario mode: {mode}")
 
@@ -77,7 +81,7 @@ def execute(
     run_type: str = "pr",
     *,
     root: Optional[str] = None,
-    timeout_s: float = 60.0,
+    timeout_s: Optional[float] = None,
     dry_run: bool = False,
 ) -> Dict[str, Any]:
     """执行编排：探活→功能→性能→（daily）指标推送。
@@ -86,7 +90,7 @@ def execute(
         scenario_id: 场景 ID。
         run_type: 运行类型，`pr` 或 `daily`。
         root: 仓库根路径（便于测试传入），默认使用 CWD。
-        timeout_s: 探活的最大时长（秒）。
+        timeout_s: 探活最大等待时长（秒），默认读取场景配置。
         dry_run: 若为 True，即使在 daily 运行也不会推送指标。
 
     返回值:
