@@ -47,6 +47,7 @@ def wait_for_ready(
     timeout_seconds: int = 60,
     interval_seconds: float = 1.0,
     success_status: int = 200,
+    headers: Optional[Dict[str, str]] = None,
 ) -> bool:
     """轮询等待目标 URL 就绪（返回期望状态码）。
 
@@ -55,6 +56,7 @@ def wait_for_ready(
         timeout_seconds: 总等待时长上限（秒）。
         interval_seconds: 轮询间隔（秒）。
         success_status: 视为就绪的状态码（默认 200）。
+        headers: 可选的请求头（如鉴权信息）。
 
     返回值:
         bool: 在超时前就绪返回 True，否则 False。
@@ -66,7 +68,11 @@ def wait_for_ready(
     deadline = time.time() + timeout_seconds
     while time.time() < deadline:
         try:
-            code, _ = http_get(url, timeout=min(interval_seconds * 2, 5.0))
+            code, _ = http_get(
+                url,
+                timeout=min(interval_seconds * 2, 5.0),
+                headers=headers,
+            )
             if code == success_status:
                 return True
         except requests.RequestException:
