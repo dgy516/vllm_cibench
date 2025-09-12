@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from typing import Any  # noqa: F401 - 预留占位，避免未使用导入报错
+from typing import Any, Optional  # noqa: F401 - 预留占位，避免未使用导入报错
 
 from ...clients.http import wait_for_http
 
@@ -50,7 +50,10 @@ def _get_node_internal_ip(api) -> str:
         调用 K8s API `list_node`。
     """
 
-    nodes = api.list_node().items  # type: ignore[attr-defined]
+    try:
+        nodes = api.list_node().items  # type: ignore[attr-defined]
+    except Exception as exc:  # pragma: no cover - K8s 客户端异常
+        raise RuntimeError("failed to list nodes") from exc
     for n in nodes:
         addrs = getattr(n.status, "addresses", [])
         for addr in addrs:
@@ -79,15 +82,18 @@ def _get_service_node_port(
         调用 K8s API `read_namespaced_service`。
     """
 
-    svc = api.read_namespaced_service(name=service_name, namespace=namespace)  # type: ignore[attr-defined]
-    ports = getattr(svc.spec, "ports", [])
+    try:
+        svc = api.read_namespaced_service(name=service_name, namespace=namespace)  # type: ignore[attr-defined]
+    except Exception as exc:  # pragma: no cover - K8s 客户端异常
+        raise RuntimeError(f"Service not found: {namespace}/{service_name}") from exc
+    ports = getattr(svc.spec, "ports", []) or []
     for p in ports:
         pname = getattr(p, "name", None) or getattr(p, "port_name", None)
         nport = getattr(p, "node_port", None) or getattr(p, "nodePort", None)
         if pname == port_name and nport:
             return int(nport)
     raise RuntimeError(
-        f"NodePort not found for service={service_name} port={port_name}"
+        f"port name '{port_name}' not found in service {namespace}/{service_name}"
     )
 
 
@@ -97,6 +103,7 @@ def discover_service_base_url(
     port_name: str = "http",
     path_prefix: str = "/v1",
     incluster: bool = False,
+    node_port: Optional[int] = None,
 ) -> str:
     """发现 K8s Service 的可访问基础 URL（NodeIP:NodePort）。
 
@@ -116,9 +123,10 @@ def discover_service_base_url(
 
     api = create_core_v1_api(incluster=incluster)
     node_ip = _get_node_internal_ip(api)
-    node_port = _get_service_node_port(api, namespace, service_name, port_name)
+    if node_port is None:
+        node_port = _get_service_node_port(api, namespace, service_name, port_name)
     prefix = path_prefix if path_prefix.startswith("/") else f"/{path_prefix}"
-    return f"http://{node_ip}:{node_port}{prefix}"
+    return f"http://{node_ip}:{int(node_port)}{prefix}"
 
 
 def wait_k8s_service_ready(
@@ -129,6 +137,7 @@ def wait_k8s_service_ready(
     timeout_s: float = 60.0,
     interval_s: float = 1.0,
     incluster: bool = False,
+    node_port: Optional[int] = None,
 ) -> bool:
     """等待 K8s Service 就绪（HTTP 200）。
 
@@ -154,6 +163,7 @@ def wait_k8s_service_ready(
         port_name=port_name,
         path_prefix=path_prefix,
         incluster=incluster,
+        node_port=node_port,
     )
     attempts = max(1, int(timeout_s / max(0.001, interval_s)))
     return wait_for_http(url, timeout_s=interval_s, max_attempts=attempts)
