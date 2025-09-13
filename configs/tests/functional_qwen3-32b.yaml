@@ -1,6 +1,9 @@
 enabled: true
 suite: true
 
+functional_metrics:
+  per_case: true
+
 cases:
   - id: chat_basic
     type: chat
@@ -17,6 +20,33 @@ cases:
         content: "Return a JSON object with key 'ok'=true."
     params:
       response_format: {type: json_object}
+
+  - id: chat_json_schema_with_tools
+    type: chat
+    messages:
+      - role: user
+        content: "Get weather for Beijing and return JSON with keys city,temp_c."
+    params:
+      tools:
+        - type: function
+          function:
+            name: get_weather
+            description: Get weather by city
+            parameters:
+              type: object
+              properties: {city: {type: string}}
+              required: [city]
+      tool_choice: required
+      response_format:
+        type: json_schema
+        json_schema:
+          name: Weather
+          schema:
+            type: object
+            properties:
+              city: {type: string}
+              temp_c: {type: number}
+            required: [city, temp_c]
 
   - id: chat_tools_named_required
     type: chat
@@ -44,6 +74,25 @@ cases:
       stream: true
       temperature: 0
 
+  - id: chat_multiturn_stream_tools
+    type: chat
+    messages:
+      - role: system
+        content: "You are helpful."
+      - role: user
+        content: "What's the weather in Beijing?"
+    params:
+      tools:
+        - type: function
+          function:
+            name: get_weather
+            parameters:
+              type: object
+              properties: {city: {type: string}}
+              required: [city]
+      tool_choice: required
+      stream: true
+
   - id: comp_basic
     type: completions
     prompt: "Hello"
@@ -60,6 +109,14 @@ matrices:
         temperature: [0.0, 1.0]
         top_p: [0.0, 1.0]
         top_k: [1, 8]
+      expect_error: false
+    - id_prefix: chat_bounds_stop
+      messages:
+        - role: user
+          content: "Say A B C"
+      params_grid:
+        stop: [["B"]]
+        max_tokens: [4, 8]
       expect_error: false
   completions:
     - id_prefix: comp_bounds
@@ -92,6 +149,13 @@ negative:
       params_list:
         - {temperature: -0.1}
       expect_error: true
+    - id_prefix: chat_invalid_stop_token_ids
+      messages:
+        - role: user
+          content: "hi"
+      params_list:
+        - {stop_token_ids: ["bad"]}
+      expect_error: true
   completions:
     - id_prefix: comp_logprobs_bounds
       prompt: "hello"
@@ -104,4 +168,8 @@ negative:
       params_list:
         - {max_tokens: -1}
       expect_error: true
-
+    - id_prefix: comp_invalid_echo_type
+      prompt: "hello"
+      params_list:
+        - {echo: "true"}
+      expect_error: true

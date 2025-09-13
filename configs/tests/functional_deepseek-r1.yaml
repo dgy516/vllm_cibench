@@ -1,6 +1,9 @@
 enabled: true
 suite: true
 
+functional_metrics:
+  per_case: true
+
 cases:
   - id: chat_reasoning_basic
     type: chat
@@ -21,6 +24,14 @@ matrices:
         temperature: [0.0, 1.0]
         top_p: [0.0, 1.0]
       expect_error: false
+    - id_prefix: ds_bounds_stop
+      messages:
+        - role: user
+          content: "Explain briefly, then stop at token 'END'."
+      params_grid:
+        stop: [["END"]]
+        temperature: [0.0, 1.0]
+      expect_error: false
 
 negative:
   chat:
@@ -32,4 +43,10 @@ negative:
         - {top_k: -1}
         - {temperature: -0.1}
       expect_error: true
-
+    - id_prefix: ds_invalid_json_schema
+      messages:
+        - role: user
+          content: "Return a JSON with key 'ok' true."
+      params_list:
+        - {response_format: {type: json_object}, stream: true, n: 2, best_of: 1}
+      expect_error: true
