@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, Optional
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 from vllm_cibench.config import Scenario, list_scenarios, load_matrix, resolve_plan
 from vllm_cibench.deploy.k8s import hybrid as k8s_hybrid

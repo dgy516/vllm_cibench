@@ -75,7 +75,8 @@ def run_accuracy(
     """
 
     task = str((cfg or {}).get("task", "gpqa"))
-    raw_samples: Iterable[Mapping[str, Any]] = (cfg or {}).get("samples", [])  # type: ignore[assignment]
+    raw = (cfg or {}).get("samples", [])
+    raw_samples: Iterable[Mapping[str, Any]] = raw if isinstance(raw, list) else []
     # 构造样本（若未提供则给出两条占位样本）
     samples: List[AccuracySample] = []
     if raw_samples:
@@ -112,7 +113,11 @@ def run_accuracy(
             },
         ]
         resp = client.chat_completions(model=model, messages=messages, temperature=0)
-        pred = _parse_choice_text(resp)  # resp 为 Dict[str, Any]
+        # chat_completions 在非 stream 情况下应返回 Dict[str, Any]
+        if isinstance(resp, dict):
+            pred = _parse_choice_text(resp)
+        else:  # 防御式处理：若出现流模式返回 list，取首个块解析
+            pred = _parse_choice_text(resp[0] if resp else {})
         if pred.strip() == sm.answer.strip():
             correct += 1
 
