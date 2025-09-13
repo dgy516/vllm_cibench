@@ -47,3 +47,9 @@ This repo hosts the ST (system tests) and CI suite for vLLM: start service (loca
   - 在交互中回贴 PR 链接，且在对应 Issue 中新增一条评论包含 PR 链接（便于稽核）。
 - 若仓库有自动合并或机器人操作导致 PR 立即合并，请立刻在沟通中标注“已合并”并贴链接；如需继续提交，请新开分支与 PR，并再次完成上述校验与回贴。
 - 如需避免过早合并，应将 PR 设为 Draft 或移除自动合并标签，待评审通过后再转为 Ready。
+
+### 开始 PR 前的分支同步（强制要求）
+- 在开始实现并准备提交 PR 前，必须将工作分支与远端目标分支（通常为 `main`）对齐：
+  - 建议命令：`git fetch origin && git rebase origin/main`（或明确目标分支）。
+  - 若出现冲突，需本地解决、运行完整校验（`pytest`、`ruff/black/isort`、`mypy --strict`）后再提交。
+  - 推送前再次 `rebase`/`--force-with-lease`，确保远端无冲突；随后创建 PR 并执行“可见性校验”。
