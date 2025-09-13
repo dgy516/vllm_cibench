@@ -31,6 +31,8 @@ class AccuracySample:
     question: str
     choices: Sequence[str]
     answer: str
+    # 可选：等价正确答案列表
+    answer_aliases: Optional[Sequence[str]] = None
 
 
 def _parse_choice_text(resp: Mapping[str, Any]) -> str:
@@ -50,6 +52,27 @@ def _parse_choice_text(resp: Mapping[str, Any]) -> str:
         return str(resp.get("choices", [{}])[0].get("message", {}).get("content", ""))
     except Exception:
         return ""
+
+
+def _normalize(text: str, cfg: Mapping[str, Any]) -> str:
+    """按配置对字符串进行归一化。
+
+    参数:
+        text: 原始文本。
+        cfg: 配置，支持：
+            - strip: 是否去除首尾空白（默认 True）
+            - case_insensitive: 是否忽略大小写（默认 False）
+
+    返回值:
+        str: 归一化后的字符串。
+    """
+
+    strip = bool(cfg.get("strip", True))
+    if strip:
+        text = text.strip()
+    if bool(cfg.get("case_insensitive", False)):
+        text = text.lower()
+    return text
 
 
 def run_accuracy(
@@ -101,6 +124,7 @@ def run_accuracy(
                     question=str(s.get("question", "")),
                     choices=list(s.get("choices", []) or []),
                     answer=str(s.get("answer", "")),
+                    answer_aliases=list(s.get("answer_aliases", []) or []),
                 )
             )
     else:
@@ -133,7 +157,20 @@ def run_accuracy(
             pred = _parse_choice_text(resp)
         else:  # 防御式处理：若出现流模式返回 list，取首个块解析
             pred = _parse_choice_text(resp[0] if resp else {})
-        if pred.strip() == sm.answer.strip():
+
+        # 归一化与别名命中
+        norm_cfg: Dict[str, Any] = dict(cfg or {})
+        pred_n = _normalize(pred, norm_cfg)
+        ans_n = _normalize(sm.answer, norm_cfg)
+        ok = pred_n == ans_n
+        # 支持样本提供 answer_aliases（等价正确答案）
+        aliases = getattr(sm, "answer_aliases", None)
+        if not ok and isinstance(aliases, list):
+            for a in aliases:
+                if _normalize(str(a), norm_cfg) == pred_n:
+                    ok = True
+                    break
+        if ok:
             correct += 1
 
     total = len(samples)
