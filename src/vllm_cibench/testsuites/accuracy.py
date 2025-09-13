@@ -93,6 +93,14 @@ def run_accuracy(
             AccuracySample("1+1?", ["2", "3"], "2"),
         ]
 
+    # 限制评测样本数（来自 cfg.max_samples）
+    try:
+        max_samples = int((cfg or {}).get("max_samples", 0))
+    except Exception:
+        max_samples = 0
+    if max_samples and max_samples > 0:
+        samples = samples[:max_samples]
+
     client = OpenAICompatClient(base_url=base_url, api_key=api_key)
     correct = 0
     for sm in samples:
@@ -104,11 +112,10 @@ def run_accuracy(
             },
         ]
         resp = client.chat_completions(model=model, messages=messages, temperature=0)
-        pred = _parse_choice_text(resp)  # type: ignore[arg-type]
+        pred = _parse_choice_text(resp)  # resp 为 Dict[str, Any]
         if pred.strip() == sm.answer.strip():
             correct += 1
 
     total = len(samples)
     score = (correct / total) if total else 0.0
     return {"task": task, "score": score, "correct": correct, "total": total}
-

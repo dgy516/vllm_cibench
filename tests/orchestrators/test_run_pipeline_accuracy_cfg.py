@@ -28,7 +28,12 @@ def test_execute_uses_global_accuracy_cfg(monkeypatch: pytest.MonkeyPatch):
 
     def fake_acc(base_url: str, model: str, cfg=None):
         captured["cfg"] = dict(cfg or {})
-        return {"task": captured["cfg"].get("task", "none"), "score": 1.0, "correct": 1, "total": 1}
+        return {
+            "task": captured["cfg"].get("task", "none"),
+            "score": 1.0,
+            "correct": 1,
+            "total": 1,
+        }
 
     monkeypatch.setattr(rp, "run_accuracy", fake_acc)
 
@@ -41,4 +46,3 @@ def test_execute_uses_global_accuracy_cfg(monkeypatch: pytest.MonkeyPatch):
     # 全局 configs/tests/accuracy.yaml 中默认 task 为 gpqa
     assert captured["cfg"].get("task") == "gpqa"
     assert res.get("accuracy", {}).get("task") == "gpqa"
-
