@@ -25,3 +25,24 @@ def test_cli_run_matrix_dry_run(monkeypatch) -> None:
     assert result.exit_code == 0, result.output
     obj = json.loads(result.stdout.strip())
     assert obj == {"dummy": "ok"}
+
+
+def test_cli_run_matrix_with_timeout(monkeypatch) -> None:
+    """校验 run-matrix 支持 --timeout 参数并透传。"""
+
+    cap = {"timeout": None}
+
+    def fake_execute_matrix(*_args: Any, **_kwargs: Any) -> Dict[str, str]:
+        cap["timeout"] = _kwargs.get("timeout_s")
+        return {"dummy": "ok"}
+
+    monkeypatch.setattr(
+        "vllm_cibench.orchestrators.run_matrix.execute_matrix", fake_execute_matrix
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["run-matrix", "--dry-run", "--timeout", "0.2"])
+    assert result.exit_code == 0, result.output
+    obj = json.loads(result.stdout.strip())
+    assert obj == {"dummy": "ok"}
+    assert cap["timeout"] == 0.2

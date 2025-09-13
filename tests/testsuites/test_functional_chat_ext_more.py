@@ -19,9 +19,7 @@ def test_chat_best_of(requests_mock):
         "object": "chat.completion",
         "created": 0,
         "model": "dummy",
-        "choices": [
-            {"index": 0, "message": {"role": "assistant", "content": "ok"}}
-        ],
+        "choices": [{"index": 0, "message": {"role": "assistant", "content": "ok"}}],
     }
     requests_mock.post(url, json=payload, status_code=200)
 
@@ -48,9 +46,7 @@ def test_chat_length_penalty_and_early_stopping(requests_mock):
         "object": "chat.completion",
         "created": 0,
         "model": "dummy",
-        "choices": [
-            {"index": 0, "message": {"role": "assistant", "content": "ok"}}
-        ],
+        "choices": [{"index": 0, "message": {"role": "assistant", "content": "ok"}}],
     }
     requests_mock.post(url, json=payload, status_code=200)
 
@@ -68,4 +64,3 @@ def test_chat_length_penalty_and_early_stopping(requests_mock):
     assert body["early_stopping"] is True
     assert body["use_beam_search"] is True
     assert out["choices"][0]["message"]["content"] == "ok"
-
