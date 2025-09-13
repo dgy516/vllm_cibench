@@ -1,3 +1,4 @@
+# isort: skip_file
 """功能测试执行器（OpenAI 兼容）。
 
 在最小冒烟能力基础上，提供更通用的用例执行接口：
@@ -12,9 +13,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
+# isort: off
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, cast
 from vllm_cibench.clients.openai_client import OpenAICompatClient
+
+# isort: on
 
 # ============================
 # 数据模型与结果结构
@@ -71,6 +75,165 @@ def _ok(payload: Any) -> SuiteResult:
 
 def _err(msg: str) -> SuiteResult:
     return {"ok": False, "error": msg, "payload": None}
+
+
+def _as_list(v: Any) -> List[Any]:
+    if v is None:
+        return []
+    if isinstance(v, list):
+        return v
+    return [v]
+
+
+def _boundary_values(values: Iterable[Any]) -> List[Any]:
+    """返回边界值组合：取列表的第一个与最后一个，避免笛卡尔积爆炸。
+
+    参数:
+        values: 候选值序列。
+
+    返回值:
+        列表：去重后的首尾两个值（如仅一个则返回一个）。
+    """
+
+    vals = list(values)
+    if not vals:
+        return []
+    if len(vals) == 1:
+        return [vals[0]]
+    return [vals[0], vals[-1]]
+
+
+def build_cases_from_config(
+    data: Mapping[str, Any]
+) -> Tuple[List[ChatCase], List[CompletionCase]]:
+    """从配置字典构建 Chat/Completions 用例列表（含边界与负路径）。
+
+    配置示例（参考 configs/tests/functional.yaml）：
+        suite: true
+        cases:
+          - id: chat_basic
+            type: chat
+            messages: [...]
+            params: {temperature: 0}
+          - id: comp_basic
+            type: completions
+            prompt: "Hello"
+            params: {max_tokens: 8}
+        matrices:
+          chat:
+            - id_prefix: chat_bounds
+              messages: [...]
+              params_grid:
+                temperature: [0.0, 1.0]
+                top_p: [0.0, 1.0]
+                top_k: [1, 8]
+              expect_error: false
+        negative:
+          chat:
+            - id_prefix: chat_invalid
+              messages: [...]
+              params_list:
+                - {top_p: 1.5}
+              expect_error: true
+          completions:
+            - id_prefix: comp_invalid
+              prompt: "hi"
+              params_list:
+                - {logprobs: true, top_logprobs: 0}
+              expect_error: true
+
+    参数:
+        data: 配置字典。
+
+    返回值:
+        (chat_cases, completion_cases)
+    """
+
+    chat_cases: List[ChatCase] = []
+    comp_cases: List[CompletionCase] = []
+
+    # 1) 显式 cases
+    for item in _as_list(data.get("cases")):
+        t = str(item.get("type", "")).lower()
+        cid = str(item.get("id", t or "case"))
+        if t == "chat":
+            chat_cases.append(
+                ChatCase(
+                    id=cid,
+                    messages=list(item.get("messages", []) or []),
+                    params=dict(item.get("params", {}) or {}),
+                    expect_error=item.get("expect_error"),
+                )
+            )
+        elif t in ("completion", "completions"):
+            comp_cases.append(
+                CompletionCase(
+                    id=cid,
+                    prompt=str(item.get("prompt", "")),
+                    params=dict(item.get("params", {}) or {}),
+                    expect_error=item.get("expect_error"),
+                )
+            )
+
+    # 2) 边界矩阵（不做全笛卡尔，仅取每个维度的首尾）
+    matrices = data.get("matrices", {}) or {}
+    for entry in _as_list(matrices.get("chat")):
+        prefix = str(entry.get("id_prefix", "chat_bounds"))
+        messages = list(entry.get("messages", []) or [])
+        grid: Mapping[str, Any] = entry.get("params_grid", {}) or {}
+        expect_error = bool(entry.get("expect_error", False))
+        for k, vals in grid.items():
+            for v in _boundary_values(_as_list(vals)):
+                cid = f"{prefix}_{k}_{str(v).replace(' ', '_')}"
+                chat_cases.append(
+                    ChatCase(
+                        id=cid,
+                        messages=messages,
+                        params={k: v},
+                        expect_error=expect_error,
+                    )
+                )
+    for entry in _as_list(matrices.get("completions")):
+        prefix = str(entry.get("id_prefix", "comp_bounds"))
+        prompt = str(entry.get("prompt", "Hello"))
+        cgrid: Mapping[str, Any] = entry.get("params_grid", {}) or {}
+        expect_error = bool(entry.get("expect_error", False))
+        for k, vals in cgrid.items():
+            for v in _boundary_values(_as_list(vals)):
+                cid = f"{prefix}_{k}_{str(v).replace(' ', '_')}"
+                comp_cases.append(
+                    CompletionCase(
+                        id=cid, prompt=prompt, params={k: v}, expect_error=expect_error
+                    )
+                )
+
+    # 3) 负路径
+    negative = data.get("negative", {}) or {}
+    for entry in _as_list(negative.get("chat")):
+        prefix = str(entry.get("id_prefix", "chat_neg"))
+        messages = list(entry.get("messages", []) or [])
+        for idx, params in enumerate(_as_list(entry.get("params_list"))):
+            cid = f"{prefix}_{idx}"
+            chat_cases.append(
+                ChatCase(
+                    id=cid,
+                    messages=messages,
+                    params=dict(params or {}),
+                    expect_error=True,
+                )
+            )
+    for entry in _as_list(negative.get("completions")):
+        prefix = str(entry.get("id_prefix", "comp_neg"))
+        prompt = str(entry.get("prompt", "Hello"))
+        for idx, params in enumerate(_as_list(entry.get("params_list"))):
+            cid = f"{prefix}_{idx}"
+            comp_cases.append(
+                CompletionCase(
+                    id=cid, prompt=prompt, params=dict(params or {}), expect_error=True
+                )
+            )
+
+    return chat_cases, comp_cases
 
 
 def run_basic_chat(
