@@ -10,7 +10,9 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence
 
 from vllm_cibench.clients.openai_client import OpenAICompatClient
@@ -77,6 +79,19 @@ def run_accuracy(
     task = str((cfg or {}).get("task", "gpqa"))
     raw = (cfg or {}).get("samples", [])
     raw_samples: Iterable[Mapping[str, Any]] = raw if isinstance(raw, list) else []
+
+    # 若提供了 samples_file，则从文件加载样本（JSON 数组，键为 question/choices/answer）。
+    samples_file = (cfg or {}).get("samples_file")
+    if isinstance(samples_file, (str, Path)):
+        try:
+            p = Path(str(samples_file))
+            data = json.loads(p.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                raw_samples = [s for s in data if isinstance(s, dict)]
+            else:
+                raw_samples = []
+        except Exception:
+            raw_samples = []
     # 构造样本（若未提供则给出两条占位样本）
     samples: List[AccuracySample] = []
     if raw_samples:
