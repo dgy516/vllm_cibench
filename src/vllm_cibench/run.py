@@ -146,6 +146,7 @@ def run_matrix(
         None, "--root", help="项目根目录（默认当前工作目录）"
     ),
     dry_run: bool = typer.Option(False, "--dry-run", help="仅运行不推送指标"),
+    timeout: float = typer.Option(60.0, "--timeout", help="探活最大等待时长（秒）"),
 ) -> None:
     """批量执行 matrix.yaml 中的所有场景。
 
@@ -161,7 +162,9 @@ def run_matrix(
         读取配置并调用 `run_pipeline.execute`，可能触发网络探活。
     """
 
-    res = run_matrix_mod.execute_matrix(run_type=run_type, root=root, dry_run=dry_run)
+    res = run_matrix_mod.execute_matrix(
+        run_type=run_type, root=root, dry_run=dry_run, timeout_s=timeout
+    )
     typer.echo(json.dumps(res, ensure_ascii=False))
 
 

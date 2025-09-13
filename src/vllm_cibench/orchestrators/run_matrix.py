@@ -26,7 +26,11 @@ def scenarios_from_matrix(matrix: Dict[str, object]) -> Iterable[str]:
 
 
 def execute_matrix(
-    run_type: str = "pr", *, root: Optional[str] = None, dry_run: bool = False
+    run_type: str = "pr",
+    *,
+    root: Optional[str] = None,
+    dry_run: bool = False,
+    timeout_s: float = 60.0,
 ) -> Dict[str, object]:
     """执行 matrix 中的所有场景，返回结果映射。
 
@@ -47,6 +51,10 @@ def execute_matrix(
     results: Dict[str, object] = {}
     for sid in scenarios_from_matrix(matrix):
         results[sid] = run_pipeline.execute(
-            scenario_id=sid, run_type=run_type, root=str(base), dry_run=dry_run
+            scenario_id=sid,
+            run_type=run_type,
+            root=str(base),
+            dry_run=dry_run,
+            timeout_s=timeout_s,
         )
     return results
