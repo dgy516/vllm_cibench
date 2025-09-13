@@ -1,5 +1,7 @@
 """更多功能参数覆盖与负路径。"""
 
+# isort: skip_file
+
 from __future__ import annotations
 
 import json
