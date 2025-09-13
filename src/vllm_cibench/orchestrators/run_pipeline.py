@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import yaml
@@ -130,7 +131,11 @@ def _load_functional_cases(base: Path) -> Tuple[List[ChatCase], List[CompletionC
         文件读取。
     """
 
-    cfg_path = base / "configs" / "tests" / "functional.yaml"
+    # 允许通过环境变量覆盖配置路径，便于不修改仓库文件也能运行套件
+    cfg_env = os.environ.get("VLLM_CIBENCH_FUNCTIONAL_CONFIG")
+    cfg_path = (
+        Path(cfg_env) if cfg_env else (base / "configs" / "tests" / "functional.yaml")
+    )
     if not cfg_path.exists():
         return [], []
     try:
