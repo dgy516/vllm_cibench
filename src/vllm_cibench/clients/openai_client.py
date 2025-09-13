@@ -103,3 +103,50 @@ class OpenAICompatClient:
                     break
                 chunks.append(json.loads(data))
         return chunks
+
+    def completions(
+        self,
+        model: str,
+        prompt: str,
+        **params: Any,
+    ) -> Dict[str, Any] | List[Dict[str, Any]]:
+        """调用 `/v1/completions` 端点。
+
+        参数:
+            model: 模型名。
+            prompt: 文本补全提示。
+            params: 其他可选参数（如 temperature/top_p/top_k/stream 等）。
+
+        返回值:
+            当 `stream=False` 时返回单个 JSON 响应；当 `stream=True` 时返
+            回按顺序排列的 chunk 列表。
+
+        副作用:
+            发起网络请求；可能抛出 `requests.RequestException` 或 `HTTPError`。
+        """
+
+        url = f"{self.base_url.rstrip('/')}/completions"
+        payload: Dict[str, Any] = {"model": model, "prompt": prompt}
+        payload.update(params)
+        stream = bool(params.get("stream"))
+        resp = requests.post(
+            url,
+            headers=self._headers(),
+            json=payload,
+            timeout=30,
+            stream=stream,
+        )
+        resp.raise_for_status()
+        if not stream:
+            return resp.json()
+
+        chunks: List[Dict[str, Any]] = []
+        for line in resp.iter_lines():
+            if not line:
+                continue
+            if line.startswith(b"data:"):
+                data = line[len(b"data:") :].strip()
+                if data == b"[DONE]":
+                    break
+                chunks.append(json.loads(data))
+        return chunks

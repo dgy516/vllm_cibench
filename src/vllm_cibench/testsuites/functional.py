@@ -86,3 +86,31 @@ def get_reasoning(out: Mapping[str, Any], key: str = "reasoning_content") -> str
     if key not in message:
         raise KeyError(f"reasoning key not found: {key}")
     return str(message[key])
+
+
+def run_basic_completion(
+    base_url: str,
+    model: str,
+    prompt: str,
+    api_key: Optional[str] = None,
+    **params: Any,
+) -> Dict[str, Any] | List[Dict[str, Any]]:
+    """执行基础文本补全（/v1/completions）。
+
+    参数:
+        base_url: 服务基础 URL，例如 `http://127.0.0.1:9000/v1`。
+        model: 模型名。
+        prompt: 文本补全提示词。
+        api_key: 可选 API Key。
+        params: 其他请求参数（如 temperature/top_p/stream 等）。
+
+    返回值:
+        当 `stream=False` 时返回单个 JSON 响应；当 `stream=True` 时返
+        回按顺序排列的 chunk 列表。
+
+    副作用:
+        发起网络请求。
+    """
+
+    client = OpenAICompatClient(base_url=base_url, api_key=api_key)
+    return client.completions(model=model, prompt=prompt, **params)
