@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, Optional
+import yaml  # type: ignore[import-untyped]
 
 from vllm_cibench.config import Scenario, list_scenarios, load_matrix, resolve_plan
 from vllm_cibench.deploy.k8s import hybrid as k8s_hybrid
@@ -18,6 +19,35 @@ from vllm_cibench.metrics.pushgateway import metrics_from_perf_records, push_met
 from vllm_cibench.metrics.rename import DEFAULT_MAPPING, rename_record_keys
 from vllm_cibench.testsuites.functional import run_smoke_suite
 from vllm_cibench.testsuites.perf import PerfResult, gen_mock_csv, parse_perf_csv
+from vllm_cibench.testsuites.accuracy import run_accuracy
+
+
+def _load_accuracy_cfg(base: Path, scenario: Scenario) -> Dict[str, Any]:
+    """加载 accuracy 配置：优先使用场景内配置，否则读取全局配置文件。
+
+    参数:
+        base: 仓库根目录。
+        scenario: 场景对象。
+
+    返回值:
+        dict: accuracy 配置字典（可能为空）。
+
+    副作用:
+        文件读取。
+    """
+
+    cfg = scenario.raw.get("accuracy", {}) or {}
+    if cfg:
+        return dict(cfg)
+    path = base / "configs" / "tests" / "accuracy.yaml"
+    if path.exists():
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            if isinstance(data, dict):
+                return dict(data)
+        except Exception:
+            return {}
+    return {}
 
 
 def _find_scenario(root: Path, scenario_id: str) -> Scenario:
@@ -158,5 +188,18 @@ def execute(
                 dry_run=dry_run,
             )
             result["pushed"] = bool(pushed)
+
+    # Accuracy
+    if plan.get("accuracy"):
+        acc_cfg = _load_accuracy_cfg(base, scenario)
+        try:
+            acc = run_accuracy(
+                base_url=base_url,
+                model=scenario.served_model_name,
+                cfg=acc_cfg,
+            )
+            result["accuracy"] = acc
+        except Exception as exc:
+            result["accuracy"] = {"error": str(exc)}
 
     return result
