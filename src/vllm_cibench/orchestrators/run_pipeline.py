@@ -18,6 +18,7 @@ from vllm_cibench.metrics.pushgateway import metrics_from_perf_records, push_met
 from vllm_cibench.metrics.rename import DEFAULT_MAPPING, rename_record_keys
 from vllm_cibench.testsuites.functional import run_smoke_suite
 from vllm_cibench.testsuites.perf import PerfResult, gen_mock_csv, parse_perf_csv
+from vllm_cibench.testsuites.accuracy import run_accuracy
 
 
 def _find_scenario(root: Path, scenario_id: str) -> Scenario:
@@ -158,5 +159,17 @@ def execute(
                 dry_run=dry_run,
             )
             result["pushed"] = bool(pushed)
+
+    # Accuracy
+    if plan.get("accuracy"):
+        try:
+            acc = run_accuracy(
+                base_url=base_url,
+                model=scenario.served_model_name,
+                cfg=scenario.raw.get("accuracy", {}),
+            )
+            result["accuracy"] = acc
+        except Exception as exc:
+            result["accuracy"] = {"error": str(exc)}
 
     return result

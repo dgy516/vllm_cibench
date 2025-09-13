@@ -57,6 +57,16 @@ def test_execute_daily_push(monkeypatch: pytest.MonkeyPatch):
         return True
 
     monkeypatch.setattr(rp, "push_metrics", fake_push)
+    monkeypatch.setattr(
+        rp,
+        "run_accuracy",
+        lambda base_url, model, cfg=None: {
+            "task": "gpqa",
+            "score": 1.0,
+            "correct": 1,
+            "total": 1,
+        },
+    )
     res = rp.execute(
         scenario_id="local_single_qwen3-32b_guided_w8a8",
         run_type="daily",
@@ -65,6 +75,7 @@ def test_execute_daily_push(monkeypatch: pytest.MonkeyPatch):
     )
     assert called["flag"] is True
     assert res["pushed"] is True
+    assert res.get("accuracy", {}).get("task") == "gpqa"
 
 
 def test_execute_daily_dry_run(monkeypatch: pytest.MonkeyPatch):
