@@ -1,13 +1,76 @@
 """功能测试执行器（OpenAI 兼容）。
 
-提供最小化的功能性冒烟测试：向 `/v1/chat/completions` 发送请求并校验结构。
+在最小冒烟能力基础上，提供更通用的用例执行接口：
+- 定义 `ChatCase` / `CompletionCase` 数据模型；
+- 提供 `run_chat_case` / `run_completions_case` 单用例执行；
+- 提供 `run_chat_suite` / `run_completions_suite` 批量执行并汇总。
+
+注：此处面向真实 vLLM 服务的功能覆盖；项目自身的单元测试请仍放在
+`tests/` 目录，通过 `requests-mock` 等方式隔离网络。
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Mapping, Optional, cast
+from dataclasses import dataclass
+from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
 from vllm_cibench.clients.openai_client import OpenAICompatClient
+
+# ============================
+# 数据模型与结果结构
+# ============================
+
+
+@dataclass
+class ChatCase:
+    """Chat 用例描述。
+
+    参数:
+        id: 用例标识。
+        messages: OpenAI 兼容消息数组。
+        params: 额外请求参数（如 stream/tools/response_format 等）。
+        expect_error: 期望出现错误（可选）。为 True 时表示任意 HTTPError
+            都视为通过；为 False/None 时表示应成功（2xx）。
+
+    返回值:
+        无，作为输入配置模型使用。
+
+    副作用:
+        无。
+    """
+
+    id: str
+    messages: List[Mapping[str, Any]]
+    params: Mapping[str, Any]
+    expect_error: Optional[bool] = None
+
+
+@dataclass
+class CompletionCase:
+    """Completions 用例描述。
+
+    参数:
+        id: 用例标识。
+        prompt: 提示词。
+        params: 额外请求参数（如 n/logprobs/top_logprobs/stream 等）。
+        expect_error: 期望错误（同 ChatCase）。
+    """
+
+    id: str
+    prompt: str
+    params: Mapping[str, Any]
+    expect_error: Optional[bool] = None
+
+
+SuiteResult = Dict[str, Any]
+
+
+def _ok(payload: Any) -> SuiteResult:
+    return {"ok": True, "error": None, "payload": payload}
+
+
+def _err(msg: str) -> SuiteResult:
+    return {"ok": False, "error": msg, "payload": None}
 
 
 def run_basic_chat(
@@ -35,6 +98,42 @@ def run_basic_chat(
     return client.chat_completions(model=model, messages=messages, **params)
 
 
+def run_chat_case(
+    base_url: str,
+    model: str,
+    case: ChatCase,
+    *,
+    api_key: Optional[str] = None,
+) -> SuiteResult:
+    """执行单个 Chat 用例（支持 stream 与参数扩展）。
+
+    参数:
+        base_url: 服务基础 URL。
+        model: 模型名。
+        case: ChatCase 用例。
+        api_key: 可选 API Key。
+
+    返回值:
+        dict: {ok: bool, error: Optional[str], payload: Any}。
+
+    副作用:
+        真实网络请求；HTTPError 将被捕获转为 error。
+    """
+
+    client = OpenAICompatClient(base_url=base_url, api_key=api_key)
+    try:
+        out = client.chat_completions(
+            model=model, messages=case.messages, **dict(case.params)
+        )
+        if case.expect_error:
+            return _err("expected error but got success")
+        return _ok(out)
+    except Exception as exc:  # requests.HTTPError 等
+        if case.expect_error:
+            return _ok({"exception": str(exc)})
+        return _err(str(exc))
+
+
 def run_smoke_suite(
     base_url: str,
     model: str,
@@ -60,6 +159,45 @@ def run_smoke_suite(
     ]
     out = run_basic_chat(client, model, messages, temperature=0)
     return cast(Dict[str, Any], out)
+
+
+def run_chat_suite(
+    base_url: str,
+    model: str,
+    cases: Sequence[ChatCase],
+    *,
+    api_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """批量执行 Chat 用例并汇总结果。
+
+    参数:
+        base_url: 服务基础 URL。
+        model: 模型名。
+        cases: ChatCase 序列。
+        api_key: 可选 API Key。
+
+    返回值:
+        dict: {summary: {total, passed, failed}, results: [{id, ok, error}...]}
+
+    副作用:
+        真实网络请求。
+    """
+
+    results: List[Dict[str, Any]] = []
+    passed = 0
+    for c in cases:
+        r = run_chat_case(base_url, model, c, api_key=api_key)
+        results.append({"id": c.id, **r})
+        if r["ok"]:
+            passed += 1
+    return {
+        "summary": {
+            "total": len(cases),
+            "passed": passed,
+            "failed": len(cases) - passed,
+        },
+        "results": results,
+    }
 
 
 def get_reasoning(out: Mapping[str, Any], key: str = "reasoning_content") -> str:
@@ -114,3 +252,63 @@ def run_basic_completion(
 
     client = OpenAICompatClient(base_url=base_url, api_key=api_key)
     return client.completions(model=model, prompt=prompt, **params)
+
+
+def run_completions_case(
+    base_url: str,
+    model: str,
+    case: CompletionCase,
+    *,
+    api_key: Optional[str] = None,
+) -> SuiteResult:
+    """执行单个 Completions 用例。
+
+    参数:
+        base_url: 服务基础 URL。
+        model: 模型名。
+        case: CompletionCase 用例。
+        api_key: 可选 API Key。
+
+    返回值:
+        dict: {ok: bool, error: Optional[str], payload: Any}。
+
+    副作用:
+        真实网络请求；HTTPError 将被捕获转为 error。
+    """
+
+    client = OpenAICompatClient(base_url=base_url, api_key=api_key)
+    try:
+        out = client.completions(model=model, prompt=case.prompt, **dict(case.params))
+        if case.expect_error:
+            return _err("expected error but got success")
+        return _ok(out)
+    except Exception as exc:
+        if case.expect_error:
+            return _ok({"exception": str(exc)})
+        return _err(str(exc))
+
+
+def run_completions_suite(
+    base_url: str,
+    model: str,
+    cases: Sequence[CompletionCase],
+    *,
+    api_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """批量执行 Completions 用例并汇总结果。"""
+
+    results: List[Dict[str, Any]] = []
+    passed = 0
+    for c in cases:
+        r = run_completions_case(base_url, model, c, api_key=api_key)
+        results.append({"id": c.id, **r})
+        if r["ok"]:
+            passed += 1
+    return {
+        "summary": {
+            "total": len(cases),
+            "passed": passed,
+            "failed": len(cases) - passed,
+        },
+        "results": results,
+    }
