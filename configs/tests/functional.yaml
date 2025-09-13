@@ -1,0 +1,12 @@
+enabled: true
+chat:
+  response_format:
+    json_object: true
+    json_schema: true
+  tools: true
+  stream: true
+  sampling:
+    temperature: [0.0, 0.7]
+    top_p: [0.0, 1.0]
+    top_k: [1, 8]
+
