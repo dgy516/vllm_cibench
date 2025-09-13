@@ -10,9 +10,7 @@
 """
 
 from __future__ import annotations
-
 import json as _json
-import json
 from pathlib import Path
 from pathlib import Path as _Path
 from typing import Optional
@@ -88,7 +86,7 @@ def plan(
 
     plan_obj = resolve_plan(matrix, scenario, run_type)
     typer.echo(
-        json.dumps(
+        _json.dumps(
             {"scenario": scenario, "run_type": run_type, "plan": plan_obj},
             ensure_ascii=False,
         )
@@ -144,7 +142,7 @@ def run(
         timeout_s=timeout,
         dry_run=dry_run,
     )
-    typer.echo(json.dumps(res, ensure_ascii=False))
+    typer.echo(_json.dumps(res, ensure_ascii=False))
 
 
 @app.command("run-matrix")
@@ -173,7 +171,7 @@ def run_matrix(
     res = run_matrix_mod.execute_matrix(
         run_type=run_type, root=root, dry_run=dry_run, timeout_s=timeout
     )
-    typer.echo(json.dumps(res, ensure_ascii=False))
+    typer.echo(_json.dumps(res, ensure_ascii=False))
 
 
 if __name__ == "__main__":
