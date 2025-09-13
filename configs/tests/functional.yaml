@@ -2,6 +2,10 @@ enabled: true
 # 是否启用批量功能用例（关闭则仅运行 smoke 冒烟）
 suite: false
 
+# 功能性指标推送（仅 daily 且非 dry-run 时生效）
+functional_metrics:
+  per_case: false
+
 # 最小示例用例（如需启用，请将 suite 置为 true）
 cases:
   - id: chat_hello
