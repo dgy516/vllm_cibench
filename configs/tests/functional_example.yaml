@@ -5,6 +5,10 @@
 enabled: true
 suite: true
 
+# 功能性指标推送（仅 daily 且非 dry-run 时生效）
+functional_metrics:
+  per_case: true
+
 cases:
   # Basic chat
   - id: chat_basic
@@ -72,4 +76,3 @@ negative:
         - {logprobs: true, top_logprobs: 0}
         - {logprobs: true, top_logprobs: 100}
       expect_error: true
-

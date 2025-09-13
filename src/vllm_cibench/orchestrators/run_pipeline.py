@@ -210,6 +210,81 @@ def execute(
                 base_url=base_url, model=scenario.served_model_name, cases=comp_cases
             )
             result["functional_report"]["completions"] = report
+        # 汇总并在 daily 时推送功能性指标（包括可选的 per-case 指标）
+        try:
+            fr = result.get("functional_report", {}) or {}
+            totals = {"total": 0, "passed": 0, "failed": 0}
+            for key in ("chat", "completions"):
+                s = (fr.get(key, {}) or {}).get("summary", {}) or {}
+                totals["total"] += int(s.get("total", 0))
+                totals["passed"] += int(s.get("passed", 0))
+                totals["failed"] += int(s.get("failed", 0))
+            if totals["total"] > 0 and not dry_run and run_type == "daily":
+                rate = (totals["passed"] / totals["total"]) if totals["total"] else 0.0
+                func_metrics = {
+                    "ci_functional_total": float(totals["total"]),
+                    "ci_functional_passed": float(totals["passed"]),
+                    "ci_functional_failed": float(totals["failed"]),
+                    "ci_functional_pass_rate": float(rate),
+                }
+                labels = {
+                    "model": scenario.model,
+                    "quant": scenario.quant,
+                    "scenario": scenario.id,
+                }
+                pushed_f = push_metrics(
+                    "vllm_cibench",
+                    func_metrics,
+                    labels=labels,
+                    run_type=run_type,
+                    dry_run=dry_run,
+                )
+                # per-case（可选）：通过配置 functional_metrics.per_case 启用
+                try:
+                    cfg_env = os.environ.get("VLLM_CIBENCH_FUNCTIONAL_CONFIG")
+                    cfg_path = (
+                        Path(cfg_env)
+                        if cfg_env
+                        else (base / "configs" / "tests" / "functional.yaml")
+                    )
+                    mcfg = (
+                        yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+                        if cfg_path.exists()
+                        else {}
+                    ) or {}
+                    per_case = bool(
+                        (mcfg.get("functional_metrics", {}) or {}).get(
+                            "per_case", False
+                        )
+                    )
+                except Exception:
+                    per_case = False
+                if per_case:
+                    for kind in ("chat", "completions"):
+                        items = (fr.get(kind, {}) or {}).get("results", []) or []
+                        for item in items:
+                            mid = str(item.get("id", "case"))
+                            case_metric = {
+                                "ci_functional_case_ok": (
+                                    1.0 if bool(item.get("ok")) else 0.0
+                                )
+                            }
+                            case_labels = {
+                                **labels,
+                                "case": mid,
+                                "kind": kind,
+                            }
+                            push_metrics(
+                                "vllm_cibench",
+                                case_metric,
+                                labels=case_labels,
+                                run_type=run_type,
+                                dry_run=dry_run,
+                            )
+                result["pushed"] = bool(result.get("pushed")) or bool(pushed_f)
+        except Exception:
+            # 指标推送异常不影响主流程
+            pass
 
         # 汇总并在 daily 时推送功能性指标（与性能指标同样受 dry_run 控制）
         try:
