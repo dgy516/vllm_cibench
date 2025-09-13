@@ -9,12 +9,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional  # noqa: F401 - 预留占位，避免未使用导入报错
+from typing import Any, Optional
 
 from ...clients.http import wait_for_http
 
 
-def create_core_v1_api(incluster: bool = False):
+def create_core_v1_api(incluster: bool = False) -> Any:
     """创建 `CoreV1Api` 客户端。
 
     参数:
@@ -28,7 +28,7 @@ def create_core_v1_api(incluster: bool = False):
     """
 
     # 延迟导入以便测试时可 monkeypatch
-    from kubernetes import client, config  # type: ignore
+    from kubernetes import client, config  # type: ignore[import-untyped]
 
     if incluster:
         config.load_incluster_config()
@@ -37,7 +37,7 @@ def create_core_v1_api(incluster: bool = False):
     return client.CoreV1Api()
 
 
-def _get_node_internal_ip(api) -> str:
+def _get_node_internal_ip(api: Any) -> str:
     """获取任一节点的 InternalIP。
 
     参数:
@@ -51,7 +51,7 @@ def _get_node_internal_ip(api) -> str:
     """
 
     try:
-        nodes = api.list_node().items  # type: ignore[attr-defined]
+        nodes = api.list_node().items
     except Exception as exc:  # pragma: no cover - K8s 客户端异常
         raise RuntimeError("failed to list nodes") from exc
     for n in nodes:
@@ -65,7 +65,7 @@ def _get_node_internal_ip(api) -> str:
 
 
 def _get_service_node_port(
-    api, namespace: str, service_name: str, port_name: str
+    api: Any, namespace: str, service_name: str, port_name: str
 ) -> int:
     """读取 Service 的指定端口名对应的 NodePort。
 
@@ -83,7 +83,7 @@ def _get_service_node_port(
     """
 
     try:
-        svc = api.read_namespaced_service(name=service_name, namespace=namespace)  # type: ignore[attr-defined]
+        svc = api.read_namespaced_service(name=service_name, namespace=namespace)
     except Exception as exc:  # pragma: no cover - K8s 客户端异常
         raise RuntimeError(f"Service not found: {namespace}/{service_name}") from exc
     ports = getattr(svc.spec, "ports", []) or []

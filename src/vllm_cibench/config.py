@@ -16,9 +16,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 
 @dataclass
@@ -56,8 +56,8 @@ def _read_yaml(path: Path) -> Dict[str, Any]:
     """
 
     with path.open("r", encoding="utf-8") as f:
-        data = yaml.safe_load(f) or {}
-    return data
+        loaded = yaml.safe_load(f) or {}
+    return cast(Dict[str, Any], loaded)
 
 
 def load_matrix(path: Path) -> Dict[str, Any]:
@@ -163,4 +163,4 @@ def resolve_plan(
     rt = entry.get(run_type)
     if not rt:
         raise KeyError(f"run_type not found for scenario '{scenario_id}': {run_type}")
-    return rt
+    return cast(Dict[str, Any], rt)

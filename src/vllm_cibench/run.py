@@ -15,7 +15,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
-import typer  # type: ignore[import-not-found]
+import typer
 
 from .config import ScenarioRegistry, load_matrix, resolve_plan
 from .orchestrators import run_matrix as run_matrix_mod
