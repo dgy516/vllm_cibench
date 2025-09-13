@@ -11,13 +11,12 @@
 
 from __future__ import annotations
 
-import json
+import json as _json
 from pathlib import Path
+from pathlib import Path as _Path
 from typing import Optional
 
 import typer
-import json as _json
-from pathlib import Path as _Path
 import yaml as _yaml
 
 from .config import ScenarioRegistry, load_matrix, resolve_plan
