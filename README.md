@@ -46,6 +46,18 @@ export VLLM_CIBENCH_FUNCTIONAL_CONFIG=$(pwd)/configs/tests/functional_example.ya
 python -m vllm_cibench.run run --scenario local_single_qwen3-32b_guided_w8a8 --run-type pr --dry-run
 ```
 
+你也可以使用为不同模型准备的专用配置：
+
+```bash
+# Qwen3-32B 专用覆盖
+export VLLM_CIBENCH_FUNCTIONAL_CONFIG=$(pwd)/configs/tests/functional_qwen3-32b.yaml
+python -m vllm_cibench.run run --scenario local_single_qwen3-32b_guided_w8a8 --run-type pr --dry-run
+
+# DeepSeek-R1 专用覆盖（如有对应场景）
+export VLLM_CIBENCH_FUNCTIONAL_CONFIG=$(pwd)/configs/tests/functional_deepseek-r1.yaml
+python -m vllm_cibench.run run --scenario k8s_pd_deepseek-r1_2p1d_reasoning_w8a8 --run-type pr --dry-run
+```
+
 方式二（修改仓库默认配置）：
 
 ```bash

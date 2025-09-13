@@ -1,0 +1,35 @@
+enabled: true
+suite: true
+
+cases:
+  - id: chat_reasoning_basic
+    type: chat
+    messages:
+      - role: user
+        content: "Explain why 2+2=4 in one sentence."
+    params:
+      reasoning: true
+      temperature: 0
+
+matrices:
+  chat:
+    - id_prefix: ds_bounds
+      messages:
+        - role: user
+          content: "Give a short reasoning about gravity."
+      params_grid:
+        temperature: [0.0, 1.0]
+        top_p: [0.0, 1.0]
+      expect_error: false
+
+negative:
+  chat:
+    - id_prefix: ds_invalid
+      messages:
+        - role: user
+          content: "hi"
+      params_list:
+        - {top_k: -1}
+        - {temperature: -0.1}
+      expect_error: true
+
