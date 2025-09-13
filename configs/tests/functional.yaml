@@ -1,12 +1,18 @@
 enabled: true
-chat:
-  response_format:
-    json_object: true
-    json_schema: true
-  tools: true
-  stream: true
-  sampling:
-    temperature: [0.0, 0.7]
-    top_p: [0.0, 1.0]
-    top_k: [1, 8]
+# 是否启用批量功能用例（关闭则仅运行 smoke 冒烟）
+suite: false
 
+# 最小示例用例（如需启用，请将 suite 置为 true）
+cases:
+  - id: chat_hello
+    type: chat
+    messages:
+      - role: user
+        content: "Say hello in one word."
+    params:
+      temperature: 0
+  - id: comp_basic
+    type: completions
+    prompt: "Hello"
+    params:
+      max_tokens: 8

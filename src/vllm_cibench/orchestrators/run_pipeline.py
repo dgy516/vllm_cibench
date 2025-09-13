@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import yaml
 
 from vllm_cibench.config import Scenario, list_scenarios, load_matrix, resolve_plan
@@ -17,7 +17,13 @@ from vllm_cibench.deploy.k8s import pd as k8s_pd
 from vllm_cibench.deploy.local import scenario_base_url, wait_service_ready
 from vllm_cibench.metrics.pushgateway import metrics_from_perf_records, push_metrics
 from vllm_cibench.metrics.rename import DEFAULT_MAPPING, rename_record_keys
-from vllm_cibench.testsuites.functional import run_smoke_suite
+from vllm_cibench.testsuites.functional import (
+    ChatCase,
+    CompletionCase,
+    run_chat_suite,
+    run_completions_suite,
+    run_smoke_suite,
+)
 from vllm_cibench.testsuites.perf import PerfResult, gen_mock_csv, parse_perf_csv
 from vllm_cibench.testsuites.accuracy import run_accuracy
 
@@ -110,6 +116,60 @@ def _discover_and_wait(
     raise ValueError(f"unsupported scenario mode: {mode}")
 
 
+def _load_functional_cases(base: Path) -> Tuple[List[ChatCase], List[CompletionCase]]:
+    """从配置加载功能性测试用例列表。
+
+    参数:
+        base: 仓库根目录。
+
+    返回值:
+        (chat_cases, completion_cases): 两类用例列表；当配置不存在或禁用时为空。
+
+    副作用:
+        文件读取。
+    """
+
+    cfg_path = base / "configs" / "tests" / "functional.yaml"
+    if not cfg_path.exists():
+        return [], []
+    try:
+        data = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return [], []
+    # 显式开关：仅当 suite: true 时启用批量用例
+    if not bool(data.get("suite", False)):
+        return [], []
+    chat_cases: List[ChatCase] = []
+    comp_cases: List[CompletionCase] = []
+    cases_list = data.get("cases") or []
+    for item in cases_list:
+        t = str(item.get("type", "")).lower()
+        cid = str(item.get("id", "")) or t
+        if t == "chat":
+            messages = list(item.get("messages", []) or [])
+            params = dict(item.get("params", {}) or {})
+            chat_cases.append(
+                ChatCase(
+                    id=cid,
+                    messages=messages,
+                    params=params,
+                    expect_error=item.get("expect_error"),
+                )
+            )
+        elif t in ("completion", "completions"):
+            prompt = str(item.get("prompt", ""))
+            params = dict(item.get("params", {}) or {})
+            comp_cases.append(
+                CompletionCase(
+                    id=cid,
+                    prompt=prompt,
+                    params=params,
+                    expect_error=item.get("expect_error"),
+                )
+            )
+    return chat_cases, comp_cases
+
+
 def execute(
     scenario_id: str,
     run_type: str = "pr",
@@ -143,6 +203,7 @@ def execute(
         "scenario": scenario_id,
         "run_type": run_type,
         "functional": "skipped",
+        "functional_report": {},
         "perf_metrics": {},
         "pushed": False,
     }
@@ -158,6 +219,19 @@ def execute(
             result["functional"] = "ok" if ok else "failed"
         except Exception:
             result["functional"] = "failed"
+
+        # 批量功能用例（可选）
+        chat_cases, comp_cases = _load_functional_cases(base)
+        if chat_cases:
+            report = run_chat_suite(
+                base_url=base_url, model=scenario.served_model_name, cases=chat_cases
+            )
+            result["functional_report"]["chat"] = report
+        if comp_cases:
+            report = run_completions_suite(
+                base_url=base_url, model=scenario.served_model_name, cases=comp_cases
+            )
+            result["functional_report"]["completions"] = report
 
     # Perf (mock-based)
     if plan.get("perf"):
