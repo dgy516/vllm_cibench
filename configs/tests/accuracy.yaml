@@ -1,0 +1,5 @@
+enabled: true
+task: gpqa
+max_samples: 100
+dataset_split: validation[:100]
+
