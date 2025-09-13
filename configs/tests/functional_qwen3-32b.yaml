@@ -1,0 +1,107 @@
+enabled: true
+suite: true
+
+cases:
+  - id: chat_basic
+    type: chat
+    messages:
+      - role: user
+        content: "Say hello in one word."
+    params:
+      temperature: 0
+
+  - id: chat_json_object
+    type: chat
+    messages:
+      - role: user
+        content: "Return a JSON object with key 'ok'=true."
+    params:
+      response_format: {type: json_object}
+
+  - id: chat_tools_named_required
+    type: chat
+    messages:
+      - role: user
+        content: "Get weather for Beijing"
+    params:
+      tools:
+        - type: function
+          function:
+            name: get_weather
+            description: Get weather by city
+            parameters:
+              type: object
+              properties: {city: {type: string}}
+              required: [city]
+      tool_choice: {type: function, function: {name: get_weather}}
+
+  - id: chat_stream_basic
+    type: chat
+    messages:
+      - role: user
+        content: "Greet me."
+    params:
+      stream: true
+      temperature: 0
+
+  - id: comp_basic
+    type: completions
+    prompt: "Hello"
+    params:
+      max_tokens: 8
+
+matrices:
+  chat:
+    - id_prefix: chat_bounds
+      messages:
+        - role: user
+          content: "Summarize: vLLM is great."
+      params_grid:
+        temperature: [0.0, 1.0]
+        top_p: [0.0, 1.0]
+        top_k: [1, 8]
+      expect_error: false
+  completions:
+    - id_prefix: comp_bounds
+      prompt: "Say X"
+      params_grid:
+        logprobs: [false, true]
+        top_logprobs: [1, 3]
+      expect_error: false
+
+negative:
+  chat:
+    - id_prefix: chat_invalid_top_p
+      messages:
+        - role: user
+          content: "hi"
+      params_list:
+        - {top_p: 1.5}
+      expect_error: true
+    - id_prefix: chat_n_gt_best_of_stream
+      messages:
+        - role: user
+          content: "hi"
+      params_list:
+        - {n: 2, best_of: 1, stream: true}
+      expect_error: true
+    - id_prefix: chat_negative_temperature
+      messages:
+        - role: user
+          content: "hi"
+      params_list:
+        - {temperature: -0.1}
+      expect_error: true
+  completions:
+    - id_prefix: comp_logprobs_bounds
+      prompt: "hello"
+      params_list:
+        - {logprobs: true, top_logprobs: 0}
+        - {logprobs: true, top_logprobs: 100}
+      expect_error: true
+    - id_prefix: comp_negative_max_tokens
+      prompt: "hello"
+      params_list:
+        - {max_tokens: -1}
+      expect_error: true
+
