@@ -16,10 +16,18 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+import json as _json
+from pathlib import Path as _Path
+import yaml as _yaml
 
 from .config import ScenarioRegistry, load_matrix, resolve_plan
 from .orchestrators import run_matrix as run_matrix_mod
 from .orchestrators import run_pipeline
+from .testsuites.functional import (
+    build_cases_from_config,
+    run_chat_suite,
+    run_completions_suite,
+)
 
 app = typer.Typer(help="vLLM CI Bench / 计划与编排 CLI")
 
@@ -170,3 +178,42 @@ def run_matrix(
 
 if __name__ == "__main__":
     main()
+
+
+@app.command("run-functional")
+def run_functional(
+    base_url: str = typer.Option(
+        ..., "--base-url", help="vLLM 服务基础 URL，如 http://127.0.0.1:9000/v1"
+    ),
+    model: str = typer.Option(..., "--model", help="模型名，如 qwen3-32b"),
+    config: str = typer.Option(..., "--config", help="功能套件配置 YAML 路径"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", help="可选 API Key"),
+) -> None:
+    """独立运行功能性测试套件（面向 vLLM 服务）。
+
+    参数:
+        base_url: vLLM 服务基础 URL（OpenAI 兼容）。
+        model: 模型名。
+        config: 套件配置 YAML，包含 cases/matrices/negative。
+        api_key: 可选 API Key。
+
+    返回值:
+        无；以 JSON 打印 `{chat: report?, completions: report?}`。
+
+    副作用:
+        真实网络请求；异常将反映在用例结果的 error 字段中。
+    """
+
+    cfg_path = _Path(config)
+    data = _yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+    chat_cases, comp_cases = build_cases_from_config(data)
+    out = {}
+    if chat_cases:
+        out["chat"] = run_chat_suite(
+            base_url=base_url, model=model, cases=chat_cases, api_key=api_key
+        )
+    if comp_cases:
+        out["completions"] = run_completions_suite(
+            base_url=base_url, model=model, cases=comp_cases, api_key=api_key
+        )
+    typer.echo(_json.dumps(out, ensure_ascii=False))
