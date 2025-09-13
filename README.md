@@ -72,6 +72,19 @@ python -m vllm_cibench.run run --scenario <sid> --run-type pr --dry-run
 
 配置格式说明可参考 `configs/tests/functional_example.yaml` 中的 cases/matrices/negative 示例。
 
+### 独立运行功能性套件（不走编排）
+
+若只需对接一个服务端点，可直接运行独立 CLI：
+
+```bash
+python -m vllm_cibench.run run-functional \
+  --base-url http://127.0.0.1:9000/v1 \
+  --model qwen3-32b \
+  --config ./configs/tests/functional_qwen3-32b.yaml
+```
+
+输出仅包含功能性报告 `{chat, completions}`，不包含性能/推送等编排行为。
+
 ## 指标推送
 
 性能阶段仅在 `run-type=daily` 且设置 `PROM_PUSHGATEWAY_URL` 时推送指标：
