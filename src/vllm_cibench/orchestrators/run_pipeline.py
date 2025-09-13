@@ -63,7 +63,11 @@ def _discover_and_wait(
     timeout = timeout_s or float(s.raw.get("startup_timeout_seconds", 60))
     if mode == "local":
         base_url = scenario_base_url(s)
-        wait_service_ready(s, timeout_seconds=int(timeout))
+        # 注意：当外部传入较小的 timeout（例如 0.5）时，int(0.5) 会变为 0，
+        # 若直接传入 0 将被 wait_service_ready 视为未提供并回退到场景配置（例如 1200 秒）。
+        # 因此这里对 timeout 做下限保护，至少为 1 秒，避免 smoke 测试卡住。
+        safe_timeout = int(timeout) if timeout >= 1 else 1
+        wait_service_ready(s, timeout_seconds=safe_timeout)
         return base_url
     if mode == "k8s-hybrid":
         base_url = k8s_hybrid.discover_base_url(s)
