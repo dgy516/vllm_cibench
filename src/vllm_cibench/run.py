@@ -1,3 +1,4 @@
+# isort: skip_file
 """命令行入口（规划/Plan）。
 
 提供最小的 `plan` 子命令：
