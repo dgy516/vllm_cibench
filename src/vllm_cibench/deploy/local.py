@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from ..clients.http import wait_for_http, wait_for_ready
 from ..config import Scenario
@@ -91,7 +91,7 @@ def start_local(
     health_url: str = "http://localhost:8000/health",
     timeout_s: float = 1.0,
     max_attempts: int = 5,
-) -> subprocess.Popen:
+) -> subprocess.Popen[Any]:
     """启动本地服务并等待健康检查成功。
 
     参数:

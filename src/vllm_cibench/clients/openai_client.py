@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, cast
 
-import requests  # type: ignore[import-untyped]
+import requests
 
 
 @dataclass
@@ -91,7 +91,7 @@ class OpenAICompatClient:
         )
         resp.raise_for_status()
         if not stream:
-            return resp.json()
+            return cast(Dict[str, Any], resp.json())
 
         chunks: List[Dict[str, Any]] = []
         for line in resp.iter_lines():
@@ -138,7 +138,7 @@ class OpenAICompatClient:
         )
         resp.raise_for_status()
         if not stream:
-            return resp.json()
+            return cast(Dict[str, Any], resp.json())
 
         chunks: List[Dict[str, Any]] = []
         for line in resp.iter_lines():

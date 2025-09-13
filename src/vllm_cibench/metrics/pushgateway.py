@@ -11,7 +11,7 @@ import os
 from typing import Dict, Iterable, Mapping, Optional
 
 # isort: off
-from prometheus_client import (  # type: ignore[import-not-found]
+from prometheus_client import (
     CollectorRegistry,
     Gauge,
     push_to_gateway,

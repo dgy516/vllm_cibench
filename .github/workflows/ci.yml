@@ -37,7 +37,7 @@ jobs:
             requirements.txt
             requirements-dev.txt
       - run: pip install -r requirements-dev.txt
-      - run: mypy --ignore-missing-imports src
+      - run: mypy --strict src
 
   test:
     name: test
