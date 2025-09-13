@@ -20,6 +20,7 @@ from vllm_cibench.metrics.rename import DEFAULT_MAPPING, rename_record_keys
 from vllm_cibench.testsuites.functional import (
     ChatCase,
     CompletionCase,
+    build_cases_from_config,
     run_chat_suite,
     run_completions_suite,
     run_smoke_suite,
@@ -139,35 +140,7 @@ def _load_functional_cases(base: Path) -> Tuple[List[ChatCase], List[CompletionC
     # 显式开关：仅当 suite: true 时启用批量用例
     if not bool(data.get("suite", False)):
         return [], []
-    chat_cases: List[ChatCase] = []
-    comp_cases: List[CompletionCase] = []
-    cases_list = data.get("cases") or []
-    for item in cases_list:
-        t = str(item.get("type", "")).lower()
-        cid = str(item.get("id", "")) or t
-        if t == "chat":
-            messages = list(item.get("messages", []) or [])
-            params = dict(item.get("params", {}) or {})
-            chat_cases.append(
-                ChatCase(
-                    id=cid,
-                    messages=messages,
-                    params=params,
-                    expect_error=item.get("expect_error"),
-                )
-            )
-        elif t in ("completion", "completions"):
-            prompt = str(item.get("prompt", ""))
-            params = dict(item.get("params", {}) or {})
-            comp_cases.append(
-                CompletionCase(
-                    id=cid,
-                    prompt=prompt,
-                    params=params,
-                    expect_error=item.get("expect_error"),
-                )
-            )
-    return chat_cases, comp_cases
+    return build_cases_from_config(data)
 
 
 def execute(
