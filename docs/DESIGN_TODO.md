@@ -95,8 +95,33 @@
   - 非法参数路径以 mock 400 响应覆盖（断言错误码/错误消息传播）。
 
 - 测试与验证
-  - `pytest -q -m "functional"`（添加 markers 后）。
-  - `pytest -q` 全绿；CI 时长可控。
+    - `pytest -q -m "functional"`（添加 markers 后）。
+    - `pytest -q` 全绿；CI 时长可控。
+
+## 里程碑 M6：vLLM 功能性套件（src/testsuites）与编排接入
+
+- 范围
+  - 在 `src/vllm_cibench/testsuites/functional.py` 中实现面向 vLLM 服务的功能套件：
+    - ChatCase/CompletionCase 数据模型；
+    - `run_chat_case`/`run_completions_case` 单用例执行，支持 stream/tools/response_format 等参数与 expect_error 负路径；
+    - `run_chat_suite`/`run_completions_suite` 批量执行并产出 `{summary, results}`；
+    - `build_cases_from_config(data)` 从 YAML 构建用例（cases/matrices/negative），对边界矩阵仅取首尾值避免笛卡尔爆炸。
+  - 在 `orchestrators/run_pipeline.execute` 中集成功能套件（保持 smoke 判定），
+    当 `configs/tests/functional.yaml: suite=true` 或通过 `VLLM_CIBENCH_FUNCTIONAL_CONFIG` 指向自定义文件时，
+    执行套件并在输出 JSON 的 `functional_report` 字段返回结果。
+  - 清理 `tests/testsuites/` 下与本项目无关的功能场景测试样例，避免与面向 vLLM 的功能套件混淆。
+- 验收
+  - 默认不启用套件（suite=false），仅跑 smoke；启用后能在 `functional_report` 中看到 `{summary, results}`。
+  - README 增加启用说明与 `functional_example.yaml` 示例文件。
+
+## 里程碑 M7：功能性结果转指标（Prometheus，可选）
+
+- 范围
+  - 在 `run_pipeline.execute` 中将 `functional_report` 汇总为指标：
+    - `ci_functional_total`、`ci_functional_passed`、`ci_functional_failed`、`ci_functional_pass_rate`。
+  - 与性能指标相同：仅在 `run_type=daily` 且非 `--dry-run` 时推送；标签沿用 `{model, quant, scenario}`。
+- 验收
+  - 本地在 daily + 非 dry-run 且设置 `PROM_PUSHGATEWAY_URL` 时可观察到推送；PR 流程不推送。
 
 ## PR 切分建议（每 PR 控制粒度，可评审）
 

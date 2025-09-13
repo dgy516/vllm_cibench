@@ -211,6 +211,40 @@ def execute(
             )
             result["functional_report"]["completions"] = report
 
+        # 汇总并在 daily 时推送功能性指标（与性能指标同样受 dry_run 控制）
+        try:
+            fr = result.get("functional_report", {}) or {}
+            totals = {"total": 0, "passed": 0, "failed": 0}
+            for key in ("chat", "completions"):
+                s = (fr.get(key, {}) or {}).get("summary", {}) or {}
+                totals["total"] += int(s.get("total", 0))
+                totals["passed"] += int(s.get("passed", 0))
+                totals["failed"] += int(s.get("failed", 0))
+            if totals["total"] > 0 and not dry_run and run_type == "daily":
+                rate = (totals["passed"] / totals["total"]) if totals["total"] else 0.0
+                func_metrics = {
+                    "ci_functional_total": float(totals["total"]),
+                    "ci_functional_passed": float(totals["passed"]),
+                    "ci_functional_failed": float(totals["failed"]),
+                    "ci_functional_pass_rate": float(rate),
+                }
+                labels = {
+                    "model": scenario.model,
+                    "quant": scenario.quant,
+                    "scenario": scenario.id,
+                }
+                pushed_f = push_metrics(
+                    "vllm_cibench",
+                    func_metrics,
+                    labels=labels,
+                    run_type=run_type,
+                    dry_run=dry_run,
+                )
+                result["pushed"] = bool(result.get("pushed")) or bool(pushed_f)
+        except Exception:
+            # 指标推送异常不影响主流程
+            pass
+
     # Perf (mock-based)
     if plan.get("perf"):
         # 生成少量 mock 数据 -> 解析 -> 重命名 -> 聚合
