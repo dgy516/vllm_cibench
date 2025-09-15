@@ -102,6 +102,20 @@ python -m vllm_cibench.run run --scenario local_single_qwen3-32b_guided_w8a8 --r
 
 使用 `--dry-run` 或未设置 `PROM_PUSHGATEWAY_URL` 时不会推送。
 
+## 精度与阈值
+
+编排会根据 `configs/tests/accuracy.yaml` 执行最小化精度评测（默认任务 `gpqa`），并在输出中附带：
+
+- `accuracy`: `{task, score, correct, total, ok}`
+- 通过 `min_score` 判定是否通过（`ok=true/false`）；`min_score=0` 表示不启用阈值。
+
+可用环境变量覆盖精度配置路径，便于在 CI/本地动态调整：
+
+```bash
+export VLLM_CIBENCH_ACCURACY_CONFIG=$(pwd)/my_accuracy.yaml
+python -m vllm_cibench.run run --scenario local_single_qwen3-32b_guided_w8a8 --run-type pr --dry-run
+```
+
 ## 脚本
 
 - 部署到 K8s：

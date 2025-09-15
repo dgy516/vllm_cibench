@@ -47,9 +47,11 @@
   - 验收：导入后可切换模型/量化/场景并对比 0d/-1d/-7d
 
 ## CI 工作流
-- [ ] PR 与每日工作流，continue-on-error，但执行“必需门”判定
+- [x] 每日工作流：continue-on-error 执行矩阵；Gate 判定 functional/accuracy；上传产物（30 天）
+  - 验收：Gate 生效，失败时工作流红；产物保留 30 天
+- [ ] PR 工作流：如需 Gate，可在 smoke 上增加必需门（当前仅上传 artifacts，14 天保留）
   - 验收：Performance 与最近一次 daily 基线比对门禁：TTFT/E2E P99 回归>10% 失败、QPS 下降>5% 失败、Fail Rate >5% 失败
-- [ ] 归档与保留策略（PR:14 天、每日:30 天）
+- [x] 归档与保留策略（PR:14 天、每日:30 天）
   - 验收：artifacts 中 CSV/JSON/HTML/日志/命令快照齐全
 
 ## 场景与样例配置
