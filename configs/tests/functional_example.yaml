@@ -9,6 +9,20 @@ suite: true
 functional_metrics:
   per_case: true
 
+# 可选：显式声明服务能力（用于按能力跳过用例）；也可通过
+# 环境变量 `VLLM_CIBENCH_CAPABILITIES` 传入，或由场景 features 派生。
+capabilities:
+  - chat.tools
+  - chat.tool_choice
+  - chat.tool_choice.by_name
+  - chat.tool_calls.parallel
+  - chat.response_format.json_object
+  - chat.response_format.json_schema
+  - chat.reasoning
+  - chat.logprobs
+  - completions.suffix
+  - completions.best_of
+
 cases:
   # Basic chat
   - id: chat_basic

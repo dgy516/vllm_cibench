@@ -35,6 +35,8 @@ class ChatCase:
         params: 额外请求参数（如 stream/tools/response_format 等）。
         expect_error: 期望出现错误（可选）。为 True 时表示任意 HTTPError
             都视为通过；为 False/None 时表示应成功（2xx）。
+        required_capabilities: 该用例所需能力列表（如 "chat.logprobs"）。
+        skip_if_unsupported: 当缺少能力时是否跳过此用例（默认 True）。
 
     返回值:
         无，作为输入配置模型使用。
@@ -47,6 +49,8 @@ class ChatCase:
     messages: List[Mapping[str, Any]]
     params: Mapping[str, Any]
     expect_error: Optional[bool] = None
+    required_capabilities: Optional[Sequence[str]] = None
+    skip_if_unsupported: bool = True
 
 
 @dataclass
@@ -58,12 +62,16 @@ class CompletionCase:
         prompt: 提示词。
         params: 额外请求参数（如 n/logprobs/top_logprobs/stream 等）。
         expect_error: 期望错误（同 ChatCase）。
+        required_capabilities: 该用例所需能力列表（如 "completions.suffix"）。
+        skip_if_unsupported: 当缺少能力时是否跳过此用例（默认 True）。
     """
 
     id: str
     prompt: str
     params: Mapping[str, Any]
     expect_error: Optional[bool] = None
+    required_capabilities: Optional[Sequence[str]] = None
+    skip_if_unsupported: bool = True
 
 
 SuiteResult = Dict[str, Any]
@@ -163,6 +171,11 @@ def build_cases_from_config(
                     messages=list(item.get("messages", []) or []),
                     params=dict(item.get("params", {}) or {}),
                     expect_error=item.get("expect_error"),
+                    required_capabilities=list(
+                        item.get("required_capabilities", []) or []
+                    )
+                    or None,
+                    skip_if_unsupported=bool(item.get("skip_if_unsupported", True)),
                 )
             )
         elif t in ("completion", "completions"):
@@ -172,6 +185,11 @@ def build_cases_from_config(
                     prompt=str(item.get("prompt", "")),
                     params=dict(item.get("params", {}) or {}),
                     expect_error=item.get("expect_error"),
+                    required_capabilities=list(
+                        item.get("required_capabilities", []) or []
+                    )
+                    or None,
+                    skip_if_unsupported=bool(item.get("skip_if_unsupported", True)),
                 )
             )
 
@@ -182,6 +200,8 @@ def build_cases_from_config(
         messages = list(entry.get("messages", []) or [])
         grid: Mapping[str, Any] = entry.get("params_grid", {}) or {}
         expect_error = bool(entry.get("expect_error", False))
+        req_caps = list(entry.get("required_capabilities", []) or []) or None
+        skip_unsupported = bool(entry.get("skip_if_unsupported", True))
         for k, vals in grid.items():
             for v in _boundary_values(_as_list(vals)):
                 cid = f"{prefix}_{k}_{str(v).replace(' ', '_')}"
@@ -191,6 +211,8 @@ def build_cases_from_config(
                         messages=messages,
                         params={k: v},
                         expect_error=expect_error,
+                        required_capabilities=req_caps,
+                        skip_if_unsupported=skip_unsupported,
                     )
                 )
     for entry in _as_list(matrices.get("completions")):
@@ -198,12 +220,19 @@ def build_cases_from_config(
         prompt = str(entry.get("prompt", "Hello"))
         cgrid: Mapping[str, Any] = entry.get("params_grid", {}) or {}
         expect_error = bool(entry.get("expect_error", False))
+        req_caps_c = list(entry.get("required_capabilities", []) or []) or None
+        skip_unsupported_c = bool(entry.get("skip_if_unsupported", True))
         for k, vals in cgrid.items():
             for v in _boundary_values(_as_list(vals)):
                 cid = f"{prefix}_{k}_{str(v).replace(' ', '_')}"
                 comp_cases.append(
                     CompletionCase(
-                        id=cid, prompt=prompt, params={k: v}, expect_error=expect_error
+                        id=cid,
+                        prompt=prompt,
+                        params={k: v},
+                        expect_error=expect_error,
+                        required_capabilities=req_caps_c,
+                        skip_if_unsupported=skip_unsupported_c,
                     )
                 )
 
@@ -212,6 +241,8 @@ def build_cases_from_config(
     for entry in _as_list(negative.get("chat")):
         prefix = str(entry.get("id_prefix", "chat_neg"))
         messages = list(entry.get("messages", []) or [])
+        req_caps = list(entry.get("required_capabilities", []) or []) or None
+        skip_unsupported = bool(entry.get("skip_if_unsupported", True))
         for idx, params in enumerate(_as_list(entry.get("params_list"))):
             cid = f"{prefix}_{idx}"
             chat_cases.append(
@@ -220,16 +251,25 @@ def build_cases_from_config(
                     messages=messages,
                     params=dict(params or {}),
                     expect_error=True,
+                    required_capabilities=req_caps,
+                    skip_if_unsupported=skip_unsupported,
                 )
             )
     for entry in _as_list(negative.get("completions")):
         prefix = str(entry.get("id_prefix", "comp_neg"))
         prompt = str(entry.get("prompt", "Hello"))
+        req_caps_c = list(entry.get("required_capabilities", []) or []) or None
+        skip_unsupported_c = bool(entry.get("skip_if_unsupported", True))
         for idx, params in enumerate(_as_list(entry.get("params_list"))):
             cid = f"{prefix}_{idx}"
             comp_cases.append(
                 CompletionCase(
-                    id=cid, prompt=prompt, params=dict(params or {}), expect_error=True
+                    id=cid,
+                    prompt=prompt,
+                    params=dict(params or {}),
+                    expect_error=True,
+                    required_capabilities=req_caps_c,
+                    skip_if_unsupported=skip_unsupported_c,
                 )
             )
 
@@ -330,34 +370,55 @@ def run_chat_suite(
     cases: Sequence[ChatCase],
     *,
     api_key: Optional[str] = None,
+    capabilities: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """批量执行 Chat 用例并汇总结果。
+    """批量执行 Chat 用例并汇总结果（支持能力跳过）。
 
     参数:
         base_url: 服务基础 URL。
         model: 模型名。
         cases: ChatCase 序列。
         api_key: 可选 API Key。
+        capabilities: 服务已支持的能力列表（如 ["chat.logprobs"])；
+            若用例声明了 `required_capabilities` 且不被包含，且 `skip_if_unsupported=True`，
+            则该用例标记为 skipped 而不执行网络请求。
 
     返回值:
-        dict: {summary: {total, passed, failed}, results: [{id, ok, error}...]}
+        dict: {summary: {total, passed, failed, skipped}, results: [{id, ok, skipped, error}...]}
 
     副作用:
-        真实网络请求。
+        真实网络请求（对未跳过的用例）。
     """
 
     results: List[Dict[str, Any]] = []
     passed = 0
+    skipped = 0
+    caps = set(capabilities or [])
     for c in cases:
+        reqs = set(c.required_capabilities or [])
+        if c.skip_if_unsupported and reqs and not reqs.issubset(caps):
+            results.append(
+                {
+                    "id": c.id,
+                    "ok": False,
+                    "skipped": True,
+                    "error": None,
+                    "payload": None,
+                    "missing_capabilities": sorted(reqs - caps),
+                }
+            )
+            skipped += 1
+            continue
         r = run_chat_case(base_url, model, c, api_key=api_key)
-        results.append({"id": c.id, **r})
+        results.append({"id": c.id, "skipped": False, **r})
         if r["ok"]:
             passed += 1
     return {
         "summary": {
             "total": len(cases),
             "passed": passed,
-            "failed": len(cases) - passed,
+            "failed": len(cases) - passed - skipped,
+            "skipped": skipped,
         },
         "results": results,
     }
@@ -457,21 +518,53 @@ def run_completions_suite(
     cases: Sequence[CompletionCase],
     *,
     api_key: Optional[str] = None,
+    capabilities: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """批量执行 Completions 用例并汇总结果。"""
+    """批量执行 Completions 用例并汇总结果（支持能力跳过）。
+
+    参数:
+        base_url: 服务基础 URL。
+        model: 模型名。
+        cases: CompletionCase 序列。
+        api_key: 可选 API Key。
+        capabilities: 服务能力列表（如 ["completions.suffix"]）。
+
+    返回值:
+        dict: {summary: {total, passed, failed, skipped}, results: [...]}。
+
+    副作用:
+        真实网络请求（对未跳过的用例）。
+    """
 
     results: List[Dict[str, Any]] = []
     passed = 0
+    skipped = 0
+    caps = set(capabilities or [])
     for c in cases:
+        reqs = set(c.required_capabilities or [])
+        if c.skip_if_unsupported and reqs and not reqs.issubset(caps):
+            results.append(
+                {
+                    "id": c.id,
+                    "ok": False,
+                    "skipped": True,
+                    "error": None,
+                    "payload": None,
+                    "missing_capabilities": sorted(reqs - caps),
+                }
+            )
+            skipped += 1
+            continue
         r = run_completions_case(base_url, model, c, api_key=api_key)
-        results.append({"id": c.id, **r})
+        results.append({"id": c.id, "skipped": False, **r})
         if r["ok"]:
             passed += 1
     return {
         "summary": {
             "total": len(cases),
             "passed": passed,
-            "failed": len(cases) - passed,
+            "failed": len(cases) - passed - skipped,
+            "skipped": skipped,
         },
         "results": results,
     }
