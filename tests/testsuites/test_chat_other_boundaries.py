@@ -16,9 +16,7 @@ def _payload():
         "object": "chat.completion",
         "created": 0,
         "model": "dummy",
-        "choices": [
-            {"index": 0, "message": {"role": "assistant", "content": "ok"}}
-        ],
+        "choices": [{"index": 0, "message": {"role": "assistant", "content": "ok"}}],
     }
 
 
@@ -59,4 +57,3 @@ def test_chat_top_k_zero(requests_mock):
     )
     body = json.loads(requests_mock.request_history[0].text)
     assert body["top_k"] == 0
-

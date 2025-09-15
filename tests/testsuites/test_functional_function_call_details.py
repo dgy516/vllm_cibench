@@ -163,6 +163,7 @@ def test_stream_with_tools_positive(requests_mock):
         stream=True,
     )
     body = json.loads(requests_mock.request_history[0].text)
-    assert body["stream"] is True and body["tools"][0]["function"]["name"] == "get_weather"
+    assert (
+        body["stream"] is True and body["tools"][0]["function"]["name"] == "get_weather"
+    )
     assert isinstance(out, list) and len(out) == 2
-

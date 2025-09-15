@@ -30,4 +30,3 @@ def test_chat_suite_skips_unsupported_capability(monkeypatch):
     assert report["summary"]["passed"] == 0
     assert report["summary"]["failed"] == 0
     assert report["results"][0]["skipped"] is True
-

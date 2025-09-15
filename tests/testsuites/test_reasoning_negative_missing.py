@@ -20,4 +20,3 @@ def test_reasoning_missing_key_raises():
     }
     with pytest.raises(KeyError):
         _ = get_reasoning(out)
-
