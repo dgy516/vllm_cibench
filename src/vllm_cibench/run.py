@@ -29,6 +29,7 @@ from .testsuites.functional import (
     run_chat_suite,
     run_completions_suite,
 )
+from .testsuites.perf_exec import PerfProfile, run_profile_to_csv
 
 app = typer.Typer(help="vLLM CI Bench / 计划与编排 CLI")
 
@@ -234,3 +235,43 @@ def run_functional(
             capabilities=sorted(caps),
         )
     typer.echo(_json.dumps(out, ensure_ascii=False))
+
+
+@app.command("run-perf")
+def run_perf(
+    base_url: str = typer.Option(
+        ..., "--base-url", help="vLLM 服务基础 URL，如 http://127.0.0.1:9000/v1"
+    ),
+    model: str = typer.Option(..., "--model", help="模型名，如 qwen3-32b"),
+    profile: str = typer.Option(..., "--profile", help="性能档位 YAML 路径"),
+    out_csv: str = typer.Option("perf.csv", "--out", help="输出 CSV 路径"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", help="可选 API Key"),
+) -> None:
+    """运行最小性能执行器并输出 CSV（与 mock CSV 兼容）。
+
+    参数:
+        base_url: vLLM 服务基础 URL（OpenAI 兼容）。
+        model: 模型名。
+        profile: 档位 YAML（如 configs/tests/perf/profiles/pr.yaml）。
+        out_csv: 输出 CSV 文件路径。
+        api_key: 可选 API Key。
+
+    返回值:
+        无；将 CSV 落盘至 out_csv。
+    """
+
+    import yaml as _yaml2
+
+    data = _yaml2.safe_load(_Path(profile).read_text(encoding="utf-8")) or {}
+    pf = PerfProfile(
+        concurrency=list(data.get("concurrency", []) or []),
+        input_length=list(data.get("input_length", []) or []),
+        output_length=list(data.get("output_length", []) or []),
+        num_requests_per_concurrency=int(data.get("num_requests_per_concurrency", 8)),
+        warmup=int(data.get("warmup", 1)),
+        epochs=int(data.get("epochs", 1)),
+        temperature=float(data.get("temperature", 0.0)),
+    )
+    csv_text = run_profile_to_csv(base_url, model, pf, api_key=api_key)
+    _Path(out_csv).write_text(csv_text, encoding="utf-8")
+    typer.echo(out_csv)
