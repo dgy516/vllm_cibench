@@ -234,4 +234,3 @@ def validate_all(root: Path) -> ValidationReport:
         functional_ok=functional_ok,
         providers=len(providers.providers),
     )
-
