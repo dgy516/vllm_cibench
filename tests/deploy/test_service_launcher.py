@@ -35,7 +35,9 @@ def test_exp_backoff_wait_success(monkeypatch: pytest.MonkeyPatch) -> None:
     assert ok is True and calls["n"] >= 3
 
 
-def test_service_launcher_start_stop(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_service_launcher_start_stop(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     # 构造最小场景
     s = Scenario(
         id="local_x",
@@ -55,7 +57,9 @@ def test_service_launcher_start_stop(monkeypatch: pytest.MonkeyPatch, tmp_path: 
         stdout.write("dummy\n")
         return _DummyProc()
 
-    monkeypatch.setattr("vllm_cibench.deploy.service_launcher.build_start_command", fake_build_cmd)
+    monkeypatch.setattr(
+        "vllm_cibench.deploy.service_launcher.build_start_command", fake_build_cmd
+    )
     monkeypatch.setattr("subprocess.Popen", fake_popen)
     # 探活立即成功
     monkeypatch.setattr(

@@ -267,7 +267,9 @@ def execute(
         launcher = ServiceLauncher(scenario, base, logs_dir)
         launcher.start()
         # 使用场景超时或默认上限 1200s
-        max_wait = int(timeout_s or float(scenario.raw.get("startup_timeout_seconds", 1200)))
+        max_wait = int(
+            timeout_s or float(scenario.raw.get("startup_timeout_seconds", 1200))
+        )
         ok = launcher.wait_ready(max_wait_seconds=max_wait)
         if not ok:
             # 启动失败：记录并返回（跳过后续阶段）

@@ -146,7 +146,11 @@ def autostart_enabled(scenario: Scenario) -> bool:
         bool: True 表示开启；默认 False。
     """
 
-    if str(os.environ.get("VLLM_CIBENCH_AUTOSTART", "")).lower() in {"1", "true", "yes"}:
+    if str(os.environ.get("VLLM_CIBENCH_AUTOSTART", "")).lower() in {
+        "1",
+        "true",
+        "yes",
+    }:
         return True
     raw = scenario.raw or {}
     return bool(raw.get("autostart", False))
