@@ -340,6 +340,9 @@ def execute(
                     for kind in ("chat", "completions"):
                         items = (fr.get(kind, {}) or {}).get("results", []) or []
                         for item in items:
+                            # 跳过被能力判定为不支持的用例（skipped），避免被当作失败推送
+                            if bool(item.get("skipped")):
+                                continue
                             mid = str(item.get("id", "case"))
                             case_metric = {
                                 "ci_functional_case_ok": (
