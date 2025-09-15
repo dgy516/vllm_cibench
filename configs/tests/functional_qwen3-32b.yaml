@@ -4,6 +4,16 @@ suite: true
 functional_metrics:
   per_case: true
 
+capabilities:
+  - chat.tools
+  - chat.tool_choice
+  - chat.tool_choice.by_name
+  - chat.response_format.json_object
+  - chat.response_format.json_schema
+  - chat.logprobs
+  - completions.suffix
+  - completions.best_of
+
 cases:
   - id: chat_basic
     type: chat
@@ -20,6 +30,7 @@ cases:
         content: "Return a JSON object with key 'ok'=true."
     params:
       response_format: {type: json_object}
+    required_capabilities: [chat.response_format.json_object]
 
   - id: chat_json_schema_with_tools
     type: chat
@@ -47,6 +58,7 @@ cases:
               city: {type: string}
               temp_c: {type: number}
             required: [city, temp_c]
+    required_capabilities: [chat.tools, chat.response_format.json_schema]
 
   - id: chat_tools_named_required
     type: chat
@@ -64,6 +76,7 @@ cases:
               properties: {city: {type: string}}
               required: [city]
       tool_choice: {type: function, function: {name: get_weather}}
+    required_capabilities: [chat.tool_choice.by_name]
 
   - id: chat_stream_basic
     type: chat
@@ -92,6 +105,7 @@ cases:
               required: [city]
       tool_choice: required
       stream: true
+    required_capabilities: [chat.tools]
 
   - id: comp_basic
     type: completions
