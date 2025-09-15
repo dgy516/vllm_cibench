@@ -17,6 +17,7 @@ from pathlib import Path
 from pathlib import Path as _Path
 from typing import Optional
 
+import os
 import typer
 import yaml as _yaml
 
@@ -207,13 +208,29 @@ def run_functional(
     cfg_path = _Path(config)
     data = _yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
     chat_cases, comp_cases = build_cases_from_config(data)
+    # 读取能力：配置 capabilities + 环境变量 VLLM_CIBENCH_CAPABILITIES
+    caps = set(map(str, data.get("capabilities", []) or []))
+    env = os.environ.get("VLLM_CIBENCH_CAPABILITIES")
+    if env:
+        for it in env.split(","):
+            it = it.strip()
+            if it:
+                caps.add(it)
     out = {}
     if chat_cases:
         out["chat"] = run_chat_suite(
-            base_url=base_url, model=model, cases=chat_cases, api_key=api_key
+            base_url=base_url,
+            model=model,
+            cases=chat_cases,
+            api_key=api_key,
+            capabilities=sorted(caps),
         )
     if comp_cases:
         out["completions"] = run_completions_suite(
-            base_url=base_url, model=model, cases=comp_cases, api_key=api_key
+            base_url=base_url,
+            model=model,
+            cases=comp_cases,
+            api_key=api_key,
+            capabilities=sorted(caps),
         )
     typer.echo(_json.dumps(out, ensure_ascii=False))
