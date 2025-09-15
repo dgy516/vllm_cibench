@@ -2,4 +2,4 @@ enabled: true
 task: gpqa
 max_samples: 100
 dataset_split: validation[:100]
-
+min_score: 0.0  # 可选阈值（0 表示不生效）；CI 可按需覆盖

@@ -31,7 +31,7 @@
 ## 精度（Simple-evals）
 - [ ] 适配 GPQA（PR=debug，每日=全量），解析 JSON/HTML 生成 score
   - 验收：产物保存至 `artifacts/accuracy/{scenario}/{ts}/`；得分成功解析
-- [ ] 阈值与 CI 策略
+- [x] 阈值与 CI 策略（代码端已支持 `min_score` 判定与 `ok` 标记；CI 门禁在 workflow 中实现）
   - 验收：PR 低于阈值失败；每日仅告警
 
 ## 指标转换与推送（Prom）
