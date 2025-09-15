@@ -84,6 +84,16 @@ jobs:
               fh.write(summary + '\n')
           PY
 
+      - name: Upload smoke artifacts (PR retention 14 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-smoke-artifacts
+          path: |
+            smoke_run.json
+            smoke_matrix.json
+          if-no-files-found: warn
+          retention-days: 14
+
   gate:
     name: gate
     runs-on: ubuntu-latest
