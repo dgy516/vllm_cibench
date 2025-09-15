@@ -31,6 +31,7 @@ from vllm_cibench.testsuites.functional import (
     run_smoke_suite,
 )
 from vllm_cibench.testsuites.perf import PerfResult, gen_mock_csv, parse_perf_csv
+from vllm_cibench.testsuites.perf_exec import PerfProfile, run_profile_to_csv
 from vllm_cibench.testsuites.accuracy import run_accuracy
 
 
@@ -393,21 +394,52 @@ def execute(
 
         # 重复的功能性指标推送已移除，避免每日重复上报
 
-    # Perf (mock-based)
+    # Perf（mock 或 real）
     if plan.get("perf"):
-        # 生成少量 mock 数据 -> 解析 -> 重命名 -> 聚合
-        csv_text = gen_mock_csv(
-            [
-                PerfResult(1, 128, 128, 50.0, 10.0),
-                PerfResult(2, 128, 128, 60.0, 20.0),
-            ]
-        )
+        mode_env = os.environ.get("VLLM_CIBENCH_PERF_MODE", "").strip().lower()
+        real_mode = mode_env == "real" or bool((scenario.raw.get("perf", {}) or {}).get("mode") == "real")
+        if real_mode:
+            # 真实执行：读取 profile（默认按 run_type 选择 pr/daily），可被环境变量覆盖
+            prof_path_env = os.environ.get("VLLM_CIBENCH_PERF_PROFILE")
+            if prof_path_env:
+                prof_path = Path(prof_path_env)
+            else:
+                prof_name = "pr.yaml" if run_type == "pr" else "daily.yaml"
+                prof_path = base / "configs" / "tests" / "perf" / "profiles" / prof_name
+            # 解析 profile 并执行
+            try:
+                data = yaml.safe_load(prof_path.read_text(encoding="utf-8")) or {}
+            except Exception:
+                data = {}
+            pf = PerfProfile(
+                concurrency=list(data.get("concurrency", []) or []),
+                input_length=list(data.get("input_length", []) or []),
+                output_length=list(data.get("output_length", []) or []),
+                num_requests_per_concurrency=int(data.get("num_requests_per_concurrency", 8)),
+                warmup=int(data.get("warmup", 1)),
+                epochs=int(data.get("epochs", 1)),
+                temperature=float(data.get("temperature", 0.0)),
+            )
+            csv_text = run_profile_to_csv(
+                base_url=base_url,
+                model=scenario.served_model_name,
+                profile=pf,
+            )
+        else:
+            # 生成少量 mock 数据 -> 解析 -> 重命名 -> 聚合
+            csv_text = gen_mock_csv(
+                [
+                    PerfResult(1, 128, 128, 50.0, 10.0),
+                    PerfResult(2, 128, 128, 60.0, 20.0),
+                ]
+            )
+
         parsed = parse_perf_csv(csv_text)
         renamed = [rename_record_keys(r, DEFAULT_MAPPING) for r in parsed]
         agg = metrics_from_perf_records(parsed)
-        result["perf_metrics"] = {**agg, "records": renamed}
+        result["perf_metrics"] = {**agg, "records": renamed, "mode": ("real" if real_mode else "mock")}
 
-        # Push (daily only)
+        # Push（仅 daily）
         labels = {
             "model": scenario.model,
             "quant": scenario.quant,
