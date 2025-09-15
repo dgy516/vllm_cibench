@@ -10,6 +10,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
+import json as _json
 import yaml
 
 from vllm_cibench.config import Scenario, list_scenarios, load_matrix, resolve_plan
@@ -473,6 +475,18 @@ def execute(
                 cfg=acc_cfg,
             )
             result["accuracy"] = acc
+            # 落地精度产物到 artifacts/accuracy/{scenario}/{ts}/result.json
+            try:
+                ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+                out_dir = base / "artifacts" / "accuracy" / scenario.id / ts
+                out_dir.mkdir(parents=True, exist_ok=True)
+                (out_dir / "result.json").write_text(
+                    _json.dumps(acc, ensure_ascii=False, indent=2), encoding="utf-8"
+                )
+                result.setdefault("artifacts", {})["accuracy_dir"] = str(out_dir)
+            except Exception:
+                # 写盘失败不影响主流程
+                pass
         except Exception as exc:
             result["accuracy"] = {"error": str(exc)}
 
