@@ -16,6 +16,10 @@ from vllm_cibench.config import Scenario, list_scenarios, load_matrix, resolve_p
 from vllm_cibench.deploy.k8s import hybrid as k8s_hybrid
 from vllm_cibench.deploy.k8s import pd as k8s_pd
 from vllm_cibench.deploy.local import scenario_base_url, wait_service_ready
+from vllm_cibench.deploy.service_launcher import (
+    ServiceLauncher,
+    autostart_enabled,
+)
 from vllm_cibench.metrics.pushgateway import metrics_from_perf_records, push_metrics
 from vllm_cibench.metrics.rename import DEFAULT_MAPPING, rename_record_keys
 from vllm_cibench.testsuites.functional import (
@@ -256,8 +260,27 @@ def execute(
         "pushed": False,
     }
 
+    # 可选：本地自动启动服务
+    launcher: Optional[ServiceLauncher] = None
+    if scenario.mode == "local" and autostart_enabled(scenario):
+        logs_dir = base / "artifacts" / "logs"
+        launcher = ServiceLauncher(scenario, base, logs_dir)
+        launcher.start()
+        # 使用场景超时或默认上限 1200s
+        max_wait = int(timeout_s or float(scenario.raw.get("startup_timeout_seconds", 1200)))
+        ok = launcher.wait_ready(max_wait_seconds=max_wait)
+        if not ok:
+            # 启动失败：记录并返回（跳过后续阶段）
+            result["functional"] = "skipped"
+            result["error"] = "service not ready after autostart"
+            if launcher.log_path:
+                result["service_log"] = str(launcher.log_path)
+            launcher.stop()
+            return result
     base_url = _discover_and_wait(base, scenario, timeout_s=timeout_s)
     result["base_url"] = base_url
+    if launcher and launcher.log_path:
+        result["service_log"] = str(launcher.log_path)
 
     # Functional
     if plan.get("functional"):
@@ -443,4 +466,6 @@ def execute(
         except Exception as exc:
             result["accuracy"] = {"error": str(exc)}
 
+    if launcher is not None:
+        launcher.stop()
     return result
