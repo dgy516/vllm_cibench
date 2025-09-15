@@ -10,10 +10,20 @@ import vllm_cibench.orchestrators.run_pipeline as rp
 
 
 @pytest.mark.perf
-def test_execute_perf_real_mode_monkeypatched(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_execute_perf_real_mode_monkeypatched(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     # 避免真实探活
-    monkeypatch.setattr(rp, "_discover_and_wait", lambda base, s, timeout_s=60.0: "http://127.0.0.1:9000/v1")
-    monkeypatch.setattr(rp, "run_smoke_suite", lambda base_url, model: {"choices": [{"message": {"content": "ok"}}]})
+    monkeypatch.setattr(
+        rp,
+        "_discover_and_wait",
+        lambda base, s, timeout_s=60.0: "http://127.0.0.1:9000/v1",
+    )
+    monkeypatch.setattr(
+        rp,
+        "run_smoke_suite",
+        lambda base_url, model: {"choices": [{"message": {"content": "ok"}}]},
+    )
     monkeypatch.setattr(rp, "push_metrics", lambda *a, **kw: False)
     # 伪造 run_profile_to_csv 返回的 CSV 文本
     csv_text = "\n".join(
