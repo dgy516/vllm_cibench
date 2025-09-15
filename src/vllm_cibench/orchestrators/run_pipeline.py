@@ -397,7 +397,9 @@ def execute(
     # Perf（mock 或 real）
     if plan.get("perf"):
         mode_env = os.environ.get("VLLM_CIBENCH_PERF_MODE", "").strip().lower()
-        real_mode = mode_env == "real" or bool((scenario.raw.get("perf", {}) or {}).get("mode") == "real")
+        real_mode = mode_env == "real" or bool(
+            (scenario.raw.get("perf", {}) or {}).get("mode") == "real"
+        )
         if real_mode:
             # 真实执行：读取 profile（默认按 run_type 选择 pr/daily），可被环境变量覆盖
             prof_path_env = os.environ.get("VLLM_CIBENCH_PERF_PROFILE")
@@ -415,7 +417,9 @@ def execute(
                 concurrency=list(data.get("concurrency", []) or []),
                 input_length=list(data.get("input_length", []) or []),
                 output_length=list(data.get("output_length", []) or []),
-                num_requests_per_concurrency=int(data.get("num_requests_per_concurrency", 8)),
+                num_requests_per_concurrency=int(
+                    data.get("num_requests_per_concurrency", 8)
+                ),
                 warmup=int(data.get("warmup", 1)),
                 epochs=int(data.get("epochs", 1)),
                 temperature=float(data.get("temperature", 0.0)),
@@ -437,7 +441,11 @@ def execute(
         parsed = parse_perf_csv(csv_text)
         renamed = [rename_record_keys(r, DEFAULT_MAPPING) for r in parsed]
         agg = metrics_from_perf_records(parsed)
-        result["perf_metrics"] = {**agg, "records": renamed, "mode": ("real" if real_mode else "mock")}
+        result["perf_metrics"] = {
+            **agg,
+            "records": renamed,
+            "mode": ("real" if real_mode else "mock"),
+        }
 
         # Push（仅 daily）
         labels = {
