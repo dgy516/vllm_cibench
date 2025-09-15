@@ -71,7 +71,9 @@ def _percentile(values: Sequence[float], pct: float) -> float:
     return float(d0 + d1)
 
 
-def compute_summary(latencies_ms: Sequence[float], duration_s: float, total: int) -> Dict[str, float]:
+def compute_summary(
+    latencies_ms: Sequence[float], duration_s: float, total: int
+) -> Dict[str, float]:
     """根据请求耗时与总时长汇总指标。
 
     参数:
@@ -134,7 +136,9 @@ def _do_chat_request(
 
     t0 = time.monotonic()
     try:
-        _ = client.chat_completions(model=model, messages=list(messages), **dict(params))
+        _ = client.chat_completions(
+            model=model, messages=list(messages), **dict(params)
+        )
         ok = True
     except Exception:
         ok = False
@@ -198,7 +202,7 @@ def run_openai_chat_batch(
         ]
         for _ in as_completed(futs):
             pass
-    duration_s = (time.monotonic() - t0)
+    duration_s = time.monotonic() - t0
     return lat_ms, len(fail), float(duration_s)
 
 
