@@ -20,9 +20,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from ..clients.http import http_get
 from ..config import Scenario
 from .local import build_start_command, scenario_base_url
-from ..clients.http import http_get
 
 
 def _exp_backoff_wait(
