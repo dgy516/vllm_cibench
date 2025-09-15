@@ -4,6 +4,9 @@ suite: true
 functional_metrics:
   per_case: true
 
+capabilities:
+  - chat.reasoning
+
 cases:
   - id: chat_reasoning_basic
     type: chat
@@ -13,6 +16,7 @@ cases:
     params:
       reasoning: true
       temperature: 0
+    required_capabilities: [chat.reasoning]
 
 matrices:
   chat:
