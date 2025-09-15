@@ -1,5 +1,20 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
+
+# 禁止直接 push 到 main 分支（必须通过 PR）
+readarray -t lines || true
+for line in "${lines[@]:-}"; do
+  # 每行格式：local_ref local_sha remote_ref remote_sha
+  # 例如：refs/heads/feature abc refs/heads/main def
+  local_ref=$(echo "$line" | awk '{print $1}')
+  remote_ref=$(echo "$line" | awk '{print $3}')
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "[policy] Direct push to main is forbidden. Please open a PR." >&2
+    echo "Rejected ref: $local_ref -> $remote_ref" >&2
+    exit 1
+  fi
+done
+
 if [ -d ".venv" ]; then
   source .venv/bin/activate || true
 fi

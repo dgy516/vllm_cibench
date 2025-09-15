@@ -1,0 +1,27 @@
+name: protect-main
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  no-direct-push:
+    name: forbid direct pushes to main
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check push origin
+        run: |
+          echo "actor=${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "event_name=${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "head_commit_msg=${{ github.event.head_commit.message || '' }}" >> $GITHUB_STEP_SUMMARY
+          # 允许的情况：
+          # - GitHub UI 合并（actor=web-flow）
+          # - 机器人（actions、dependabot）
+          # 其它 actor 视为直接 push，标记失败（无法阻止提交，但用于稽核）
+          ACTOR="${{ github.actor }}"
+          if [ "$ACTOR" = "web-flow" ] || [ "$ACTOR" = "github-actions[bot]" ] || [ "$ACTOR" = "dependabot[bot]" ]; then
+            echo "Allowed actor: $ACTOR"
+            exit 0
+          fi
+          echo "Disallowed direct push by $ACTOR. Please use Pull Requests only." >&2
+          exit 1
