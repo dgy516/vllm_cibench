@@ -51,9 +51,22 @@ def _load_accuracy_cfg(base: Path, scenario: Scenario) -> Dict[str, Any]:
         文件读取。
     """
 
+    # 1) 场景内联配置优先
     cfg = scenario.raw.get("accuracy", {}) or {}
     if cfg:
         return dict(cfg)
+
+    # 2) 环境变量覆盖（便于测试/CI 动态指定）
+    env_cfg = os.environ.get("VLLM_CIBENCH_ACCURACY_CONFIG")
+    if env_cfg:
+        try:
+            p = Path(env_cfg)
+            data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+            if isinstance(data, dict):
+                return dict(data)
+        except Exception:
+            # 忽略读取失败，回退至默认路径
+            pass
     path = base / "configs" / "tests" / "accuracy.yaml"
     if path.exists():
         try:
@@ -474,6 +487,16 @@ def execute(
                 model=scenario.served_model_name,
                 cfg=acc_cfg,
             )
+            # 阈值与通过判定：支持配置 min_score（缺省不判定）
+            try:
+                min_score = float(acc_cfg.get("min_score", 0.0))
+            except Exception:
+                min_score = 0.0
+            try:
+                score_val = float(acc.get("score", 0.0))
+            except Exception:
+                score_val = 0.0
+            acc["ok"] = (score_val >= min_score) if min_score > 0 else True
             result["accuracy"] = acc
             # 落地精度产物到 artifacts/accuracy/{scenario}/{ts}/result.json
             try:
