@@ -99,4 +99,29 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, typecheck, test]
     steps:
-      - run: echo "All required CI jobs passed."
+      - name: Download smoke artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-smoke-artifacts
+          path: pr-smoke
+      - name: Gate on smoke functional (best-effort)
+        run: |
+          python - <<'PY'
+          import json, os, sys, pathlib
+          p = pathlib.Path('pr-smoke/smoke_run.json')
+          if not p.exists():
+            print('No smoke_run.json found; skipping gate.')
+            sys.exit(0)
+          try:
+            run = json.loads(p.read_text())
+          except Exception as e:
+            print(f'Failed to parse smoke_run.json: {e}; skipping gate.')
+            sys.exit(0)
+          func = run.get('functional')
+          print(f'functional={func}')
+          # Gate only on explicit failure; pass/ok/None treated as pass
+          if func == 'failed':
+            print('Gate failed: smoke functional failed')
+            sys.exit(1)
+          print('Gate satisfied')
+          PY
