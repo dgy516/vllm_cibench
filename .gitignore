@@ -21,3 +21,6 @@ venv/
 build/
 dist/
 *.egg-info/
+
+# Run artifacts (should not be committed)
+artifacts/
