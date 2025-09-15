@@ -6,12 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from vllm_cibench.config_loader import (
-    ValidationReport,
-    load_matrix_strict,
-    load_scenarios_strict,
-    validate_all,
-)
+from vllm_cibench.config_loader import (ValidationReport, load_matrix_strict,
+                                        load_scenarios_strict, validate_all)
 
 
 def test_validate_repo_configs_ok(tmp_path: Path):
