@@ -40,4 +40,3 @@ def test_chat_stream_json_object_positive(requests_mock):
     text = "".join([c["choices"][0]["delta"].get("content", "") for c in chunks])
     obj = json.loads(text)
     assert obj["city"] == "beijing"
-

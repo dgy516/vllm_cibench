@@ -19,9 +19,7 @@ def test_chat_logprobs_and_top_logprobs(requests_mock):
         "object": "chat.completion",
         "created": 0,
         "model": "dummy",
-        "choices": [
-            {"index": 0, "message": {"role": "assistant", "content": "ok"}}
-        ],
+        "choices": [{"index": 0, "message": {"role": "assistant", "content": "ok"}}],
     }
     requests_mock.post(url, json=payload, status_code=200)
 
@@ -36,4 +34,3 @@ def test_chat_logprobs_and_top_logprobs(requests_mock):
     body = json.loads(requests_mock.request_history[0].text)
     assert body["logprobs"] is True
     assert body["top_logprobs"] == 2
-

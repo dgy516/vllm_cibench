@@ -38,4 +38,3 @@ def test_completions_suffix_and_best_of_positive(requests_mock):
     assert body["suffix"] == " end"
     assert body["n"] == 2 and body["best_of"] == 3
     assert len(out["choices"]) == 2
-

@@ -190,17 +190,21 @@ def _load_capabilities(base: Path, scenario: Scenario) -> List[str]:
     # 3) 从场景 features 映射常见能力
     feats = scenario.raw.get("features", {}) or {}
     if bool(feats.get("function_call")):
-        caps.extend([
-            "chat.tools",
-            "chat.tool_choice",
-            "chat.tool_choice.by_name",
-            "chat.tool_calls.parallel",
-        ])
+        caps.extend(
+            [
+                "chat.tools",
+                "chat.tool_choice",
+                "chat.tool_choice.by_name",
+                "chat.tool_calls.parallel",
+            ]
+        )
     if bool(feats.get("guided_decoding")):
-        caps.extend([
-            "chat.response_format.json_object",
-            "chat.response_format.json_schema",
-        ])
+        caps.extend(
+            [
+                "chat.response_format.json_object",
+                "chat.response_format.json_schema",
+            ]
+        )
     if bool(feats.get("reasoning")):
         caps.append("chat.reasoning")
 
