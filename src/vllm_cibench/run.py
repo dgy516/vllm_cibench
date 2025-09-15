@@ -178,10 +178,6 @@ def run_matrix(
     typer.echo(_json.dumps(res, ensure_ascii=False))
 
 
-if __name__ == "__main__":
-    main()
-
-
 @app.command("run-functional")
 def run_functional(
     base_url: str = typer.Option(
@@ -275,3 +271,7 @@ def run_perf(
     csv_text = run_profile_to_csv(base_url, model, pf, api_key=api_key)
     _Path(out_csv).write_text(csv_text, encoding="utf-8")
     typer.echo(out_csv)
+
+
+if __name__ == "__main__":
+    main()
