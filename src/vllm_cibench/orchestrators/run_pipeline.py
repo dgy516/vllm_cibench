@@ -148,6 +148,72 @@ def _load_functional_cases(base: Path) -> Tuple[List[ChatCase], List[CompletionC
     return build_cases_from_config(data)
 
 
+def _load_capabilities(base: Path, scenario: Scenario) -> List[str]:
+    """加载服务能力列表（用于按能力跳过用例）。
+
+    参数:
+        base: 仓库根目录。
+        scenario: 场景对象，用于从 features 派生能力。
+
+    返回值:
+        list[str]: 能力标识列表（如 "chat.tools"、"chat.logprobs"）。
+
+    副作用:
+        读取功能套件配置文件；解析环境变量。
+    """
+
+    caps: List[str] = []
+    # 1) 环境变量覆盖（逗号分隔）
+    env_caps = os.environ.get("VLLM_CIBENCH_CAPABILITIES")
+    if env_caps:
+        for it in env_caps.split(","):
+            it = it.strip()
+            if it:
+                caps.append(it)
+
+    # 2) 从功能套件配置读取 capabilities（若存在）
+    cfg_env = os.environ.get("VLLM_CIBENCH_FUNCTIONAL_CONFIG")
+    cfg_path = (
+        Path(cfg_env) if cfg_env else (base / "configs" / "tests" / "functional.yaml")
+    )
+    if cfg_path.exists():
+        try:
+            data = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+            file_caps = list((data.get("capabilities", []) or []))
+            for it in file_caps:
+                s = str(it).strip()
+                if s:
+                    caps.append(s)
+        except Exception:
+            pass
+
+    # 3) 从场景 features 映射常见能力
+    feats = scenario.raw.get("features", {}) or {}
+    if bool(feats.get("function_call")):
+        caps.extend([
+            "chat.tools",
+            "chat.tool_choice",
+            "chat.tool_choice.by_name",
+            "chat.tool_calls.parallel",
+        ])
+    if bool(feats.get("guided_decoding")):
+        caps.extend([
+            "chat.response_format.json_object",
+            "chat.response_format.json_schema",
+        ])
+    if bool(feats.get("reasoning")):
+        caps.append("chat.reasoning")
+
+    # 去重并返回
+    dedup = []
+    seen = set()
+    for c in caps:
+        if c not in seen:
+            seen.add(c)
+            dedup.append(c)
+    return dedup
+
+
 def execute(
     scenario_id: str,
     run_type: str = "pr",
@@ -200,14 +266,21 @@ def execute(
 
         # 批量功能用例（可选）
         chat_cases, comp_cases = _load_functional_cases(base)
+        capabilities = _load_capabilities(base, scenario)
         if chat_cases:
             report = run_chat_suite(
-                base_url=base_url, model=scenario.served_model_name, cases=chat_cases
+                base_url=base_url,
+                model=scenario.served_model_name,
+                cases=chat_cases,
+                capabilities=capabilities,
             )
             result["functional_report"]["chat"] = report
         if comp_cases:
             report = run_completions_suite(
-                base_url=base_url, model=scenario.served_model_name, cases=comp_cases
+                base_url=base_url,
+                model=scenario.served_model_name,
+                cases=comp_cases,
+                capabilities=capabilities,
             )
             result["functional_report"]["completions"] = report
         # 汇总并在 daily 时推送功能性指标（包括可选的 per-case 指标）

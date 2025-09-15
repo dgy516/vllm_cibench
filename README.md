@@ -72,6 +72,12 @@ python -m vllm_cibench.run run --scenario <sid> --run-type pr --dry-run
 
 配置格式说明可参考 `configs/tests/functional_example.yaml` 中的 cases/matrices/negative 示例。
 
+能力跳过（capability-aware skipping）：
+- 在配置中通过 `capabilities: [...]` 声明服务已支持的能力，或设置环境变量：
+  `export VLLM_CIBENCH_CAPABILITIES="chat.tools,chat.response_format.json_schema,completions.suffix"`
+- 运行时，若某用例标注了 `required_capabilities` 而服务未声明该能力，且 `skip_if_unsupported=true`，
+  则该用例被标记为 `skipped`，不会当作失败统计；报告 `summary` 含 `skipped` 字段。
+
 ### 独立运行功能性套件（不走编排）
 
 若只需对接一个服务端点，可直接运行独立 CLI：
@@ -95,6 +101,28 @@ python -m vllm_cibench.run run --scenario local_single_qwen3-32b_guided_w8a8 --r
 ```
 
 使用 `--dry-run` 或未设置 `PROM_PUSHGATEWAY_URL` 时不会推送。
+
+## 脚本
+
+- 部署到 K8s：
+
+  ```bash
+  scripts/deploy_k8s.sh -f configs/deploy/infer_vllm_kubeinfer.yaml --wait 30
+  ```
+
+  该脚本封装最小化的 `kubectl apply`，并提供简单的等待提示；更复杂的就绪性/探活请使用编排 CLI。
+
+- 从性能 CSV 聚合并推送指标：
+
+  ```bash
+  scripts/collect_and_push.sh \
+    --csv ./artifacts/perf.csv \
+    --run-type daily \
+    --label model=Qwen3-32B --label quant=w8a8 --label scenario=local_single \
+    --gateway-url http://pushgw:9091
+  ```
+
+  注意：仅 `run-type=daily` 且已设置 `PROM_PUSHGATEWAY_URL`（或传入 `--gateway-url`）时会推送；在 fork 或非主仓库会自动跳过推送。
 
 ## 开发与调试
 
