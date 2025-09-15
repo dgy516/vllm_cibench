@@ -18,7 +18,9 @@ from vllm_cibench.metrics.rename import DEFAULT_MAPPING
 def parse_args() -> argparse.Namespace:
     """解析命令行参数。"""
 
-    p = argparse.ArgumentParser(description="Rename metric keys to Prometheus-friendly names")
+    p = argparse.ArgumentParser(
+        description="Rename metric keys to Prometheus-friendly names"
+    )
     p.add_argument("--in", dest="in_path", type=Path, required=True)
     p.add_argument("--out", dest="out_path", type=Path, required=True)
     p.add_argument("--fmt", choices=["csv", "json"], required=True)
@@ -59,7 +61,9 @@ def process_json(in_path: Path, out_path: Path) -> None:
         data = [_rename_dict(x) for x in data]
     elif isinstance(data, dict):
         data = _rename_dict(data)
-    out_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    out_path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
 
 def main() -> None:
@@ -72,4 +76,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

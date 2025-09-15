@@ -147,3 +147,14 @@ mypy src                     # 类型检查
 ```
 
 本地端到端调试可使用 `--dry-run` 跳过推送。CI 中复现实验需与上述命令保持一致。
+
+### 贡献与分支策略
+
+- 禁止直接 push 到 `main` 分支，必须通过 Pull Request 合并。
+- 安装预推送钩子（客户端防误推）：
+
+  ```bash
+  ln -sf ../../hooks/pre-push .git/hooks/pre-push
+  ```
+
+- 服务器侧有保护工作流：若检测到直接 push 到 `main`，工作流会失败作为稽核提示。
