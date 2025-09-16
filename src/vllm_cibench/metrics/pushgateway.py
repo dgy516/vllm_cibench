@@ -59,16 +59,25 @@ def metrics_from_perf_records(
 
     thr = []
     p50 = []
+    p95 = []
+    p99 = []
     for r in records:
         if "throughput_rps" in r:
             thr.append(float(r["throughput_rps"]))
         if "latency_p50_ms" in r:
             p50.append(float(r["latency_p50_ms"]))
+        if "latency_p95_ms" in r:
+            p95.append(float(r["latency_p95_ms"]))
+        if "latency_p99_ms" in r:
+            p99.append(float(r["latency_p99_ms"]))
     out: Dict[str, float] = {}
     if thr:
         out["ci_perf_throughput_rps_avg"] = sum(thr) / len(thr)
     if p50:
         out["ci_perf_latency_p50_ms_avg"] = sum(p50) / len(p50)
+    # 若不存在相应分位数记录，则给出占位 -1，便于面板与告警配置
+    out.setdefault("ci_perf_latency_p95_ms_avg", (sum(p95) / len(p95)) if p95 else -1.0)
+    out.setdefault("ci_perf_latency_p99_ms_avg", (sum(p99) / len(p99)) if p99 else -1.0)
     return out
 
 

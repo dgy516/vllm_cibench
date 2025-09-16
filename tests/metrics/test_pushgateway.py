@@ -96,3 +96,29 @@ def test_metrics_from_perf_records():
     )
     assert out["ci_perf_throughput_rps_avg"] == 15
     assert out["ci_perf_latency_p50_ms_avg"] == 50
+    # 未提供 p95/p99 时使用占位 -1
+    assert out["ci_perf_latency_p95_ms_avg"] == -1.0
+    assert out["ci_perf_latency_p99_ms_avg"] == -1.0
+
+
+def test_metrics_from_perf_records_with_quantiles():
+    out = pg.metrics_from_perf_records(
+        [
+            {
+                "throughput_rps": 10,
+                "latency_p50_ms": 40,
+                "latency_p95_ms": 80,
+                "latency_p99_ms": 100,
+            },
+            {
+                "throughput_rps": 20,
+                "latency_p50_ms": 60,
+                "latency_p95_ms": 120,
+                "latency_p99_ms": 140,
+            },
+        ]
+    )
+    assert out["ci_perf_throughput_rps_avg"] == 15
+    assert out["ci_perf_latency_p50_ms_avg"] == 50
+    assert out["ci_perf_latency_p95_ms_avg"] == 100
+    assert out["ci_perf_latency_p99_ms_avg"] == 120
