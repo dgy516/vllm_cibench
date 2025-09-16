@@ -83,13 +83,23 @@ def parse_perf_csv(csv_text: str) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     reader = csv.DictReader(io.StringIO(csv_text))
     for row in reader:
-        out.append(
-            {
-                "concurrency": int(row["concurrency"]),
-                "input_len": int(row["input_len"]),
-                "output_len": int(row["output_len"]),
-                "latency_p50_ms": float(row["latency_p50_ms"]),
-                "throughput_rps": float(row["throughput_rps"]),
-            }
-        )
+        item: Dict[str, Any] = {
+            "concurrency": int(row["concurrency"]),
+            "input_len": int(row["input_len"]),
+            "output_len": int(row["output_len"]),
+            "latency_p50_ms": float(row["latency_p50_ms"]),
+            "throughput_rps": float(row["throughput_rps"]),
+        }
+        # 可选分位：latency_p95_ms / latency_p99_ms
+        if "latency_p95_ms" in row and row["latency_p95_ms"] not in (None, ""):
+            try:
+                item["latency_p95_ms"] = float(row["latency_p95_ms"])
+            except Exception:
+                pass
+        if "latency_p99_ms" in row and row["latency_p99_ms"] not in (None, ""):
+            try:
+                item["latency_p99_ms"] = float(row["latency_p99_ms"])
+            except Exception:
+                pass
+        out.append(item)
     return out
