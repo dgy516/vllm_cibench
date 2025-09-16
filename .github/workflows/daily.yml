@@ -39,10 +39,26 @@ jobs:
           echo "Daily matrix finished with exit code $? (tolerated)."
         continue-on-error: true
 
-      - name: Summarize and gate (accuracy ok, functional ok)
+      - name: Download last successful daily baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          # 查找最近一次成功的 daily 运行（排除当前运行）
+          CUR_ID=${{ github.run_id }}
+          RUN_ID=$(gh run list --workflow daily --branch main --status success --json databaseId --limit 10 | grep -o '"databaseId":[0-9]*' | grep -o '[0-9]*' | head -n 1)
+          if [ -n "$RUN_ID" ] && [ "$RUN_ID" != "$CUR_ID" ]; then
+            echo "Downloading baseline from run $RUN_ID"
+            gh run download "$RUN_ID" -n daily-artifacts -D baseline || true
+          else
+            echo "No prior successful daily run found (or same as current). Skipping baseline download."
+          fi
+        continue-on-error: true
+
+      - name: Summarize and gate (functional/accuracy + perf regression)
         run: |
           python - <<'PY'
-          import json, os, sys
+          import json, os, sys, math
           p = 'daily_matrix.json'
           try:
             data = json.load(open(p, 'r', encoding='utf-8'))
@@ -52,16 +68,42 @@ jobs:
 
           lines = []
           fail = False
+          # 读取 baseline（若存在）
+          base_p = os.path.join('baseline', 'daily_matrix.json')
+          try:
+            base = json.load(open(base_p, 'r', encoding='utf-8')) if os.path.exists(base_p) else {}
+          except Exception:
+            base = {}
           for sid, res in data.items():
             func = res.get('functional')
             acc = res.get('accuracy') or {}
             acc_ok = (acc.get('ok') is True)
-            # 门禁：功能不为 failed，且 accuracy.ok=True（当存在 accuracy 时）
+            # 门禁-功能/精度：功能不为 failed，且 accuracy.ok=True（当存在 accuracy 时）
             if func == 'failed':
               fail = True
             if acc and not acc_ok:
               fail = True
-            lines.append(f"{sid}: functional={func}, accuracy_ok={acc_ok}")
+            # 门禁-性能回归（若存在 baseline 与当前 perf 指标）
+            perf = res.get('perf_metrics') or {}
+            bperf = (base.get(sid) or {}).get('perf_metrics') or {}
+            thr = perf.get('ci_perf_throughput_rps_avg')
+            bthr = bperf.get('ci_perf_throughput_rps_avg')
+            lat_keys = ['ci_perf_latency_p99_ms_avg', 'ci_perf_latency_p50_ms_avg']
+            # 优先对比 p99，缺失时回退 p50
+            lat = next((perf.get(k) for k in lat_keys if k in perf), None)
+            blat = next((bperf.get(k) for k in lat_keys if k in bperf), None)
+            perf_note = ''
+            if isinstance(thr, (int, float)) and isinstance(bthr, (int, float)) and bthr > 0:
+              drop = (thr - bthr) / bthr
+              if drop < -0.05:
+                fail = True
+                perf_note += f" [RPS drop {drop*100:.1f}%]"
+            if isinstance(lat, (int, float)) and isinstance(blat, (int, float)) and blat > 0 and lat >= 0 and blat >= 0:
+              inc = (lat - blat) / blat
+              if inc > 0.10:
+                fail = True
+                perf_note += f" [Latency regress {inc*100:.1f}%]"
+            lines.append(f"{sid}: functional={func}, accuracy_ok={acc_ok}{perf_note}")
 
           summary = '\n'.join(f"- {l}" for l in lines) if lines else '- no results'
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as fh:
@@ -69,7 +111,7 @@ jobs:
             fh.write(summary + '\n')
 
           if fail:
-            print('Gate failed: functional failed or accuracy below threshold.')
+            print('Gate failed: functional/accuracy/perf regression criteria not satisfied.')
             sys.exit(1)
           else:
             print('Gate satisfied.')
