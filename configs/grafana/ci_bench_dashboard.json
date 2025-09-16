@@ -1,0 +1,57 @@
+{
+  "__inputs": [],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0"},
+    {"type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "2.0.0"}
+  ],
+  "title": "vLLM CI Bench",
+  "editable": true,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Accuracy Score",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+      "targets": [
+        {
+          "expr": "ci_accuracy_score{model=\"$model\",quant=\"$quant\",scenario=\"$scenario\"}",
+          "legendFormat": "{{task}}"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Functional Per-Case",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 8},
+      "transformations": [],
+      "options": {"showHeader": true},
+      "targets": [
+        {
+          "expr": "ci_functional_case_ok{model=\"$model\",quant=\"$quant\",scenario=\"$scenario\"}",
+          "format": "table",
+          "legendFormat": "{{kind}} {{case}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {"type": "value", "options": {"0": {"text": "FAIL", "color": "red"}, "1": {"text": "PASS", "color": "green"}}}
+          ],
+          "thresholds": {"mode": "absolute", "steps": [{"value": null, "color": "red"}, {"value": 1, "color": "green"}]}
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "templating": {
+    "list": [
+      {"type": "datasource", "name": "DS_PROM", "query": "prometheus"},
+      {"type": "query", "name": "model", "datasource": "$DS_PROM", "query": "label_values(ci_accuracy_score, model)", "includeAll": false},
+      {"type": "query", "name": "quant", "datasource": "$DS_PROM", "query": "label_values(ci_accuracy_score, quant)", "includeAll": false},
+      {"type": "query", "name": "scenario", "datasource": "$DS_PROM", "query": "label_values(ci_accuracy_score, scenario)", "includeAll": false}
+    ]
+  },
+  "time": {"from": "now-7d", "to": "now"},
+  "timezone": "",
+  "version": 1
+}
+

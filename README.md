@@ -116,6 +116,16 @@ export VLLM_CIBENCH_ACCURACY_CONFIG=$(pwd)/my_accuracy.yaml
 python -m vllm_cibench.run run --scenario local_single_qwen3-32b_guided_w8a8 --run-type pr --dry-run
 ```
 
+### Grafana 面板（accuracy + functional per-case）
+
+- 导入 `configs/grafana/ci_bench_dashboard.json` 到 Grafana（数据源：Prometheus）。
+- 面板说明：
+  - Accuracy Score：展示 `ci_accuracy_score` 随时间的变化（按 `model/quant/scenario` 分面）。
+  - Functional Per-Case：表格展示 `ci_functional_case_ok`（1=PASS，0=FAIL）。
+- 指标推送（Daily）：
+  - accuracy：`ci_accuracy_score`、`ci_accuracy_correct`、`ci_accuracy_total`、`ci_accuracy_ok`（labels：model/quant/scenario/task）。
+  - functional per-case：`ci_functional_case_ok`（labels：model/quant/scenario/case/kind）。
+
 ## 脚本
 
 - 部署到 K8s：

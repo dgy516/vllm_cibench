@@ -525,6 +525,30 @@ def execute(
                 score_val = 0.0
             acc["ok"] = (score_val >= min_score) if min_score > 0 else True
             result["accuracy"] = acc
+            # Daily 推送 Accuracy 指标（score/correct/total/ok）
+            if run_type == "daily" and not dry_run:
+                try:
+                    acc_metrics = {
+                        "ci_accuracy_score": float(score_val),
+                        "ci_accuracy_correct": float(acc.get("correct", 0) or 0.0),
+                        "ci_accuracy_total": float(acc.get("total", 0) or 0.0),
+                        "ci_accuracy_ok": 1.0 if acc.get("ok") else 0.0,
+                    }
+                    labels = {
+                        "model": scenario.model,
+                        "quant": scenario.quant,
+                        "scenario": scenario.id,
+                        "task": str(acc.get("task", "")),
+                    }
+                    push_metrics(
+                        "vllm_cibench",
+                        acc_metrics,
+                        labels=labels,
+                        run_type=run_type,
+                        dry_run=dry_run,
+                    )
+                except Exception:
+                    pass
             # 落地精度产物到 artifacts/accuracy/{scenario}/{ts}/result.json
             try:
                 ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
