@@ -40,6 +40,39 @@
         },
         "overrides": []
       }
+    },
+    {
+      "type": "timeseries",
+      "title": "Perf Throughput (RPS)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+      "targets": [
+        {
+          "expr": "${metric_prefix}perf_throughput_rps_avg{model=\"$model\",quant=\"$quant\",scenario=\"$scenario\"}",
+          "legendFormat": "throughput_rps_avg"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Perf Latency (${quantile})",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+      "targets": [
+        {
+          "expr": "${metric_prefix}perf_latency_${quantile}_ms_avg{model=\"$model\",quant=\"$quant\",scenario=\"$scenario\"}",
+          "legendFormat": "latency_${quantile}_ms_avg"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Functional Pass Rate",
+      "gridPos": {"h": 6, "w": 24, "x": 0, "y": 28},
+      "targets": [
+        {
+          "expr": "${metric_prefix}functional_pass_rate{model=\"$model\",quant=\"$quant\",scenario=\"$scenario\"}",
+          "legendFormat": "pass_rate"
+        }
+      ]
     }
   ],
   "templating": {
@@ -47,11 +80,12 @@
       {"type": "datasource", "name": "DS_PROM", "query": "prometheus"},
       {"type": "query", "name": "model", "datasource": "$DS_PROM", "query": "label_values(ci_accuracy_score, model)", "includeAll": false},
       {"type": "query", "name": "quant", "datasource": "$DS_PROM", "query": "label_values(ci_accuracy_score, quant)", "includeAll": false},
-      {"type": "query", "name": "scenario", "datasource": "$DS_PROM", "query": "label_values(ci_accuracy_score, scenario)", "includeAll": false}
+      {"type": "query", "name": "scenario", "datasource": "$DS_PROM", "query": "label_values(ci_accuracy_score, scenario)", "includeAll": false},
+      {"type": "textbox", "name": "metric_prefix", "query": "ci_", "label": "Metric Prefix"},
+      {"type": "custom", "name": "quantile", "query": "p50", "label": "Latency Quantile"}
     ]
   },
   "time": {"from": "now-7d", "to": "now"},
   "timezone": "",
   "version": 1
 }
-
