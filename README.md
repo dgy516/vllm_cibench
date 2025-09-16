@@ -138,6 +138,15 @@ python -m vllm_cibench.run run --scenario local_single_qwen3-32b_guided_w8a8 --r
 
   注意：仅 `run-type=daily` 且已设置 `PROM_PUSHGATEWAY_URL`（或传入 `--gateway-url`）时会推送；在 fork 或非主仓库会自动跳过推送。
 
+### K8s 场景清理（可选）
+
+- 在编排结束后，如果提供了删除 YAML，将尝试 `kubectl delete -f` 清理资源：
+
+  - 场景内配置：`raw.k8s_delete_yaml: ./configs/deploy/infer_vllm_kubeinfer.yaml`
+  - 或环境变量：`export VLLM_CIBENCH_K8S_DELETE_YAML=$(pwd)/configs/deploy/infer_vllm_kubeinfer.yaml`
+
+- 命名空间取自场景 `raw.k8s.namespace`，删除失败会被忽略（不影响主流程）。
+
 ## 开发与调试
 
 ```bash
