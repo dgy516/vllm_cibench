@@ -115,15 +115,59 @@ def run_accuracy(
                 raw_samples = []
         except Exception:
             raw_samples = []
+
+    # 若提供了 dataset_file（JSON 或 JSONL），支持简化的 Simple-evals 结构：
+    # - 每行/项包含 question/choices/answer，或以 answer_idx 指定正确选项索引。
+    dataset_file = (cfg or {}).get("dataset_file")
+    if isinstance(dataset_file, (str, Path)):
+        p = Path(str(dataset_file))
+        fmt = str((cfg or {}).get("dataset_format", "jsonl")).lower()
+        items: list[Mapping[str, Any]] = []
+        try:
+            if fmt == "json":
+                data = json.loads(p.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    items = [s for s in data if isinstance(s, dict)]
+            else:  # jsonl（默认）
+                for line in p.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                        if isinstance(obj, dict):
+                            items.append(obj)
+                    except Exception:
+                        continue
+        except Exception:
+            items = []
+        if items:
+            raw_samples = items
     # 构造样本（若未提供则给出两条占位样本）
     samples: List[AccuracySample] = []
     if raw_samples:
         for s in raw_samples:
+            # 兼容 answer_idx 形式
+            q = str(s.get("question", ""))
+            ch = list(s.get("choices", []) or [])
+            ans: str
+            if "answer" in s:
+                ans = str(s.get("answer", ""))
+            elif "answer_idx" in s:
+                try:
+                    v = s.get("answer_idx")
+                    idx = int(v) if isinstance(v, (int, str)) else -1
+                    ans = str(ch[idx]) if 0 <= idx < len(ch) else ""
+                except Exception:
+                    ans = ""
+            else:
+                # fallback：label/gt 等常见字段名
+                ans = str(s.get("label", s.get("gt", "")))
             samples.append(
                 AccuracySample(
-                    question=str(s.get("question", "")),
-                    choices=list(s.get("choices", []) or []),
-                    answer=str(s.get("answer", "")),
+                    question=q,
+                    choices=ch,
+                    answer=ans,
                     answer_aliases=list(s.get("answer_aliases", []) or []),
                 )
             )

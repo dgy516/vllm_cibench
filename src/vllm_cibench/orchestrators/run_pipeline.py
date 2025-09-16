@@ -38,7 +38,7 @@ from vllm_cibench.testsuites.perf_exec import PerfProfile, run_profile_to_csv
 from vllm_cibench.testsuites.accuracy import run_accuracy
 
 
-def _load_accuracy_cfg(base: Path, scenario: Scenario) -> Dict[str, Any]:
+def _load_accuracy_cfg(base: Path, scenario: Scenario, run_type: str) -> Dict[str, Any]:
     """加载 accuracy 配置：优先使用场景内配置，否则读取全局配置文件。
 
     参数:
@@ -64,7 +64,20 @@ def _load_accuracy_cfg(base: Path, scenario: Scenario) -> Dict[str, Any]:
             p = Path(env_cfg)
             data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
             if isinstance(data, dict):
-                return dict(data)
+                # 若存在 run_type 专用配置，则将其与基础配置合并（基础<-覆盖）
+                merged = dict(data)
+                prof_dir = base / "configs" / "tests" / "accuracy"
+                prof_path = prof_dir / f"{run_type}.yaml"
+                try:
+                    if prof_path.exists():
+                        prof = (
+                            yaml.safe_load(prof_path.read_text(encoding="utf-8")) or {}
+                        )
+                        if isinstance(prof, dict):
+                            merged.update(prof)
+                except Exception:
+                    pass
+                return merged
         except Exception:
             # 忽略读取失败，回退至默认路径
             pass
@@ -73,7 +86,20 @@ def _load_accuracy_cfg(base: Path, scenario: Scenario) -> Dict[str, Any]:
         try:
             data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
             if isinstance(data, dict):
-                return dict(data)
+                merged = dict(data)
+                # 同步加载 run_type 专用配置进行覆盖
+                prof_dir = base / "configs" / "tests" / "accuracy"
+                prof_path = prof_dir / f"{run_type}.yaml"
+                try:
+                    if prof_path.exists():
+                        prof = (
+                            yaml.safe_load(prof_path.read_text(encoding="utf-8")) or {}
+                        )
+                        if isinstance(prof, dict):
+                            merged.update(prof)
+                except Exception:
+                    pass
+                return merged
         except Exception:
             return {}
     return {}
@@ -481,7 +507,7 @@ def execute(
 
     # Accuracy
     if plan.get("accuracy"):
-        acc_cfg = _load_accuracy_cfg(base, scenario)
+        acc_cfg = _load_accuracy_cfg(base, scenario, run_type)
         try:
             acc = run_accuracy(
                 base_url=base_url,
