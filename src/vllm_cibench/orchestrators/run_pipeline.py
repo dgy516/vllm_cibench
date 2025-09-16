@@ -17,6 +17,7 @@ import yaml
 from vllm_cibench.config import Scenario, list_scenarios, load_matrix, resolve_plan
 from vllm_cibench.deploy.k8s import hybrid as k8s_hybrid
 from vllm_cibench.deploy.k8s import pd as k8s_pd
+from vllm_cibench.deploy.k8s import cleanup as k8s_cleanup
 from vllm_cibench.deploy.local import scenario_base_url, wait_service_ready
 from vllm_cibench.deploy.service_launcher import (
     ServiceLauncher,
@@ -515,4 +516,19 @@ def execute(
 
     if launcher is not None:
         launcher.stop()
+    # 可选：K8s 资源清理（仅在场景声明或环境变量提供 YAML 时执行）
+    try:
+        if scenario.mode.startswith("k8s"):
+            k8s_dict = scenario.raw.get("k8s", {}) or {}
+            ns = str(k8s_dict.get("namespace", "")) or None
+            # 优先场景提供，其次环境变量覆盖
+            yaml_path = scenario.raw.get("k8s_delete_yaml") or os.environ.get(
+                "VLLM_CIBENCH_K8S_DELETE_YAML"
+            )
+            if yaml_path:
+                p = Path(str(yaml_path))
+                k8s_cleanup.delete_resources(p, namespace=ns)
+    except Exception:
+        # 清理失败不影响主流程
+        pass
     return result
