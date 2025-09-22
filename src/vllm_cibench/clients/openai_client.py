@@ -1,16 +1,26 @@
 """OpenAI 兼容客户端封装。
 
-使用 `requests` 以 OpenAI 兼容的 REST 方式访问 `/v1/chat/completions` 等端点，
-便于在单元测试中通过 `requests-mock` 进行模拟，不依赖官方 SDK 的 httpx 传输。
+依赖官方 `openai` SDK 的 `OpenAI.chat.completions.create` 接口发起请求，
+避免重复实现 HTTP 逻辑，同时保持对 stream 与非 stream 模式的兼容行为。
 """
 
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, cast
+from dataclasses import dataclass, field
+from typing import Any, Callable, ClassVar, Dict, Iterable, List, Mapping, Optional, cast
 
 import requests
+
+from openai import (
+    APIConnectionError,
+    APITimeoutError,
+    APIStatusError,
+    OpenAI,
+    OpenAIError,
+)
+
+from openai.types.chat import ChatCompletionChunk
 
 
 @dataclass
@@ -32,6 +42,31 @@ class OpenAICompatClient:
     base_url: str
     api_key: Optional[str] = None
     default_headers: Optional[Mapping[str, str]] = None
+
+    _client_factory: ClassVar[
+        Callable[..., OpenAI]
+    ] = OpenAI  # 允许在测试中替换
+    _client: OpenAI = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        """初始化内部 OpenAI 客户端。
+
+        参数:
+            无（使用 dataclass 字段作为输入）。
+
+        返回值:
+            None。
+
+        副作用:
+            根据初始化参数构造并缓存 `_client` 实例。
+        """
+
+        headers = dict(self.default_headers) if self.default_headers else None
+        self._client = self._client_factory(
+            api_key=self.api_key or "EMPTY",
+            base_url=self.base_url,
+            default_headers=headers,
+        )
 
     def _headers(self, extra: Optional[Mapping[str, str]] = None) -> Dict[str, str]:
         """构造请求头。
@@ -57,6 +92,26 @@ class OpenAICompatClient:
             headers["Authorization"] = f"Bearer {self.api_key}"
         return headers
 
+    @staticmethod
+    def _dump_openai_payload(payload: Any) -> Dict[str, Any]:
+        """将 OpenAI SDK 返回对象转换为原始 dict。
+
+        参数:
+            payload: `openai` SDK 返回的对象或其替身。
+
+        返回值:
+            dict: 兼容 JSON 的基础字典。
+
+        副作用:
+            无。
+        """
+
+        if isinstance(payload, dict):
+            return payload
+        if hasattr(payload, "model_dump"):
+            return cast(Dict[str, Any], payload.model_dump())
+        raise TypeError(f"unsupported payload type: {type(payload)!r}")
+
     def chat_completions(
         self,
         model: str,
@@ -78,30 +133,29 @@ class OpenAICompatClient:
             发起网络请求；可能抛出 `requests.RequestException`。
         """
 
-        url = f"{self.base_url.rstrip('/')}/chat/completions"
         payload: Dict[str, Any] = {"model": model, "messages": messages}
         payload.update(params)
         stream = bool(params.get("stream"))
-        resp = requests.post(
-            url,
-            headers=self._headers(),
-            json=payload,
-            timeout=30,
-            stream=stream,
-        )
-        resp.raise_for_status()
+
+        try:
+            result = self._client.chat.completions.create(**payload)
+        except APIStatusError as err:
+            raise requests.HTTPError(str(err)) from err
+        except (APIConnectionError, APITimeoutError, OpenAIError) as err:
+            raise requests.RequestException(str(err)) from err
+
         if not stream:
-            return cast(Dict[str, Any], resp.json())
+            return self._dump_openai_payload(result)
 
         chunks: List[Dict[str, Any]] = []
-        for line in resp.iter_lines():
-            if not line:
-                continue
-            if line.startswith(b"data:"):
-                data = line[len(b"data:") :].strip()
-                if data == b"[DONE]":
-                    break
-                chunks.append(json.loads(data))
+        iterator: Iterable[ChatCompletionChunk] = cast(Iterable[ChatCompletionChunk], result)
+        try:
+            for chunk in iterator:
+                chunks.append(self._dump_openai_payload(chunk))
+        finally:
+            close = getattr(result, "close", None)
+            if callable(close):
+                close()
         return chunks
 
     def completions(
